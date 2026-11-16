@@ -1,0 +1,112 @@
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Bug, Lock, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+export default function LoginPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const from = location.state?.from?.pathname || '/labs';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await login(identifier, password);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+      <div className="max-w-md w-full bg-[#0f172a]/90 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl backdrop-blur-md">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-600 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/20">
+            <div className="w-full h-full bg-[#080c14] rounded-[14px] flex items-center justify-center">
+              <Bug className="w-6 h-6 text-emerald-400" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-extrabold text-white tracking-tight">เข้าสู่ระบบ PETBUG</h2>
+          <p className="text-xs text-slate-400">เข้าสู่ระบบเพื่อเริ่มเจาะระบบใน Lab และเก็บสะสมแต้ม</p>
+        </div>
+
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+          <div>
+            <label className="block text-slate-300 font-medium mb-1.5 text-xs">
+              ชื่อผู้ใช้ หรือ อีเมล
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                required
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="admin or hacker_x"
+                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 pl-10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-medium mb-1.5 text-xs">
+              รหัสผ่าน
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 pl-10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full inline-flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 mt-2"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <span>เข้าสู่ระบบ</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800">
+          ยังไม่มีบัญชี?{' '}
+          <Link to="/register" className="text-emerald-400 hover:underline font-semibold">
+            สมัครสมาชิกใหม่
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
