@@ -1,0 +1,11 @@
+# Environment files
+.env
+*.local
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Traefik dynamic runtime configs
+traefik/dynamic/*.yaml
+!traefik/dynamic/.gitkeep

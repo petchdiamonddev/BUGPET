@@ -1,10 +1,25 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { docker } from '../config/docker.js';
 import { logger } from '../config/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class DockerService {
   constructor() {
     this.networkName = process.env.TRAEFIK_NETWORK || 'petbug_net';
     this.baseDomain = process.env.BASE_LAB_DOMAIN || 'lab.localhost';
+    // Directory where Traefik reads dynamic routing configs
+    this.traefikDynamicDir = path.resolve(__dirname, '../../../traefik/dynamic');
+    if (!fs.existsSync(this.traefikDynamicDir)) {
+      try {
+        fs.mkdirSync(this.traefikDynamicDir, { recursive: true });
+      } catch (e) {
+        // ignore
+      }
+    }
   }
 
   async ensureNetworkExists() {
@@ -49,10 +64,64 @@ class DockerService {
     }
   }
 
-  async createLabContainer({ subdomain, dockerImage, flag, containerPort = 80 }) {
+  writeTraefikRouteConfig(subdomain, containerName, port) {
+    const domain = `${subdomain}.${this.baseDomain}`;
+    const routerName = `lab-${subdomain}`;
+    const configPath = path.join(this.traefikDynamicDir, `lab-${subdomain}.yaml`);
+
+    const yamlContent = `http:
+  routers:
+    ${routerName}:
+      rule: "Host(\`${domain}\`)"
+      entryPoints:
+        - web
+      service: ${routerName}
+  services:
+    ${routerName}:
+      loadBalancer:
+        servers:
+          - url: "http://${containerName}:${port}"
+`;
+
+    fs.writeFileSync(configPath, yamlContent, 'utf8');
+    logger.info({ msg: 'Wrote Traefik dynamic route config', configPath, domain, target: `http://${containerName}:${port}` });
+  }
+
+  removeTraefikRouteConfig(subdomain) {
+    const configPath = path.join(this.traefikDynamicDir, `lab-${subdomain}.yaml`);
+    if (fs.existsSync(configPath)) {
+      try {
+        fs.unlinkSync(configPath);
+        logger.info({ msg: 'Removed Traefik dynamic route config', configPath });
+      } catch (err) {
+        logger.warn({ msg: 'Could not remove Traefik config', error: err.message });
+      }
+    }
+  }
+
+  async createLabContainer({ subdomain, dockerImage, flag, containerPort = null }) {
     await this.ensureNetworkExists();
     await this.ensureImageExists(dockerImage);
 
+    // Auto-detect exposed port from Docker image metadata if not explicitly provided
+    let targetPort = containerPort;
+    if (!targetPort) {
+      try {
+        const imageInfo = await docker.getImage(dockerImage).inspect();
+        const exposed = Object.keys(imageInfo.Config?.ExposedPorts || {});
+        if (exposed.length > 0) {
+          targetPort = parseInt(exposed[0].split('/')[0], 10);
+          logger.info(`Auto-detected port ${targetPort} for image ${dockerImage}`);
+        } else {
+          targetPort = 80;
+        }
+      } catch (e) {
+        logger.warn(`Could not inspect image exposed ports, defaulting to 80: ${e.message}`);
+        targetPort = 80;
+      }
+    }
+
+    const containerName = `petbug-lab-${subdomain}`;
     const routerName = `lab-${subdomain}`;
     const domain = `${subdomain}.${this.baseDomain}`;
 
@@ -60,14 +129,14 @@ class DockerService {
       'traefik.enable': 'true',
       [`traefik.http.routers.${routerName}.rule`]: `Host(\`${domain}\`)`,
       [`traefik.http.routers.${routerName}.entrypoints`]: 'web',
-      [`traefik.http.services.${routerName}.loadbalancer.server.port`]: String(containerPort),
+      [`traefik.http.services.${routerName}.loadbalancer.server.port`]: String(targetPort),
       'petbug.managed': 'true',
       'petbug.subdomain': subdomain,
     };
 
     const containerConfig = {
       Image: dockerImage,
-      name: `petbug-lab-${subdomain}`,
+      name: containerName,
       Env: [`FLAG=${flag}`, `SUBDOMAIN=${subdomain}`, `NODE_ENV=production`],
       Labels: labels,
       HostConfig: {
@@ -79,9 +148,12 @@ class DockerService {
       },
     };
 
-    logger.info({ msg: 'Creating lab container', subdomain, image: dockerImage, domain });
+    logger.info({ msg: 'Creating lab container', subdomain, image: dockerImage, domain, targetPort });
     const container = await docker.createContainer(containerConfig);
     await container.start();
+
+    // Write Traefik dynamic file route
+    this.writeTraefikRouteConfig(subdomain, containerName, targetPort);
 
     return {
       containerId: container.id,
@@ -97,6 +169,12 @@ class DockerService {
       const container = docker.getContainer(containerId);
       const inspection = await container.inspect();
 
+      // Look for subdomain from container labels to clean up config file
+      const subdomain = inspection.Config?.Labels?.['petbug.subdomain'];
+      if (subdomain) {
+        this.removeTraefikRouteConfig(subdomain);
+      }
+
       if (inspection.State.Running) {
         logger.info(`Stopping container: ${containerId}`);
         await container.stop({ t: 5 });
@@ -105,7 +183,6 @@ class DockerService {
       logger.info(`Removing container: ${containerId}`);
       await container.remove({ force: true });
     } catch (err) {
-      // 404 means container is already gone
       if (err.statusCode === 404) {
         logger.warn(`Container already removed or not found: ${containerId}`);
         return;
