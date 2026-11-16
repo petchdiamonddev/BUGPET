@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -16,13 +11,99 @@ enum ROLE {
   USER
 }
 
-model User {
-  id       Int    @id @default(autoincrement())
-  username String
-  email    String
-  password String
-  role     ROLE @default(USER)
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum InstanceStatus {
+  STARTING
+  RUNNING
+  STOPPED
+  ERROR
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  email        String        @unique
+  password     String
+  role         ROLE          @default(USER)
+  points       Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  labInstances LabInstance[]
+  solves       Solve[]
+  badges       UserBadge[]
+}
+
+model Lab {
+  id          Int           @id @default(autoincrement())
+  title       String
+  description String
+  difficulty  Difficulty    @default(EASY)
+  dockerImage String
+  flag        String
+  points      Int           @default(100)
+  timeoutMin  Int           @default(60)
+  isActive    Boolean       @default(true)
+  tags        String[]      @default([])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  instances   LabInstance[]
+  solves      Solve[]
+}
+
+model LabInstance {
+  id          String         @id @default(cuid())
+  userId      Int
+  labId       Int
+  containerId String?
+  subdomain   String         @unique
+  status      InstanceStatus @default(STARTING)
+  startedAt   DateTime       @default(now())
+  expiresAt   DateTime
+  stoppedAt   DateTime?
+  error       String?
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lab         Lab            @relation(fields: [labId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model Solve {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  labId    Int
+  solvedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lab      Lab      @relation(fields: [labId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, labId])
+}
+
+model Badge {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String
+  icon        String
+  condition   String
+
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  userId   Int
+  badgeId  Int
+  earnedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, badgeId])
 }

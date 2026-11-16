@@ -1,13 +1,49 @@
 services:
+  traefik:
+    image: traefik:v3.1
+    container_name: petbug-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080" # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - petbug_net
+
   db:
     image: postgres:16-alpine
-    container_name: bugpet-db
+    container_name: petbug-db
     environment:
       POSTGRES_DB: bugpet
       POSTGRES_USER: pet
       POSTGRES_PASSWORD: adminnnnnnnnnnnnnnnnnnnnnnNa
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - petbug_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: petbug-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - petbug_net
+
+networks:
+  petbug_net:
+    name: petbug_net
+    driver: bridge
 
 volumes:
-  db:
+  pgdata:
+  redisdata:
