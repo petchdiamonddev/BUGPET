@@ -1,76 +1,43 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Users, Clock, ArrowRight, CheckCircle2, Play } from 'lucide-react';
 
 export default function LabCard({ lab, isActiveInstance }) {
-  const difficultyConfig = {
-    EASY: {
-      label: 'Easy',
-      border: 'border-emerald-500/30',
-      badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-      glow: 'group-hover:border-emerald-500/50',
-    },
-    MEDIUM: {
-      label: 'Medium',
-      border: 'border-amber-500/30',
-      badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-      glow: 'group-hover:border-amber-500/50',
-    },
-    HARD: {
-      label: 'Hard',
-      border: 'border-rose-500/30',
-      badge: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-      glow: 'group-hover:border-rose-500/50',
-    },
+  const getDifficultyBadge = (diff) => {
+    switch (diff) {
+      case 'HARD':
+        return <span className="bg-red-100 text-red-800 border border-red-300 px-1.5 py-0.5 rounded-[2px] font-bold text-[10px]">ยาก (HARD)</span>;
+      case 'MEDIUM':
+        return <span className="bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded-[2px] font-bold text-[10px]">ปานกลาง (MEDIUM)</span>;
+      default:
+        return <span className="bg-green-100 text-green-800 border border-green-300 px-1.5 py-0.5 rounded-[2px] font-bold text-[10px]">ง่าย (EASY)</span>;
+    }
   };
 
-  const config = difficultyConfig[lab.difficulty] || difficultyConfig.EASY;
-
   return (
-    <div className={`group relative bg-[#0f172a]/70 hover:bg-[#131c33] border border-slate-800/80 ${config.glow} rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between shadow-lg shadow-black/30 backdrop-blur-sm hover:-translate-y-1`}>
-      {/* Top Banner / Tags */}
-      <div>
-        <div className="flex items-center justify-between gap-2 mb-3.5">
-          <div className="flex items-center space-x-2">
-            <span className={`text-[11px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full border ${config.badge}`}>
-              {config.label}
-            </span>
-            {lab.isSolved && (
-              <span className="inline-flex items-center space-x-1 text-[11px] font-semibold bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                <span>SOLVED</span>
-              </span>
-            )}
-            {isActiveInstance && (
-              <span className="inline-flex items-center space-x-1 text-[11px] font-semibold bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full animate-pulse">
-                <span>RUNNING</span>
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center text-xs font-bold text-emerald-400 font-mono bg-emerald-950/30 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-            +{lab.points} PTS
-          </div>
+    <div className="fb-box">
+      {/* Box Header */}
+      <div className="fb-box-header flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          {getDifficultyBadge(lab.difficulty)}
+          <Link to={`/labs/${lab.id}`} className="text-[#385898] hover:underline font-bold text-xs sm:text-sm">
+            {lab.title}
+          </Link>
         </div>
+        <div className="text-[11px] font-bold font-mono text-[#3b5998]">
+          +{lab.points} แต้ม
+        </div>
+      </div>
 
-        {/* Title */}
-        <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-emerald-400 transition mb-2">
-          {lab.title}
-        </h3>
-
-        {/* Description */}
-        <p className="text-xs sm:text-sm text-slate-400 line-clamp-2 mb-4 leading-relaxed">
+      {/* Box Body */}
+      <div className="p-3 space-y-2 text-xs">
+        <p className="text-gray-700 leading-relaxed">
           {lab.description}
         </p>
 
-        {/* Tags */}
         {lab.tags && lab.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
+          <div className="flex flex-wrap gap-1 text-[11px]">
             {lab.tags.map((tag, idx) => (
-              <span
-                key={idx}
-                className="text-[11px] bg-slate-800/90 text-slate-300 px-2 py-0.5 rounded font-mono border border-slate-700/50"
-              >
+              <span key={idx} className="bg-[#f0f2f5] text-gray-600 px-1.5 py-0.5 border border-[#ccd0d5] rounded-[2px]">
                 #{tag}
               </span>
             ))}
@@ -78,29 +45,25 @@ export default function LabCard({ lab, isActiveInstance }) {
         )}
       </div>
 
-      {/* Footer Info & Action */}
-      <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-        <div className="flex items-center space-x-3">
-          <span className="flex items-center space-x-1" title="จำนวนผู้พิชิต">
-            <Users className="w-3.5 h-3.5 text-slate-500" />
-            <span>{lab.solvesCount || 0}</span>
-          </span>
-          <span className="flex items-center space-x-1" title="เวลาต่อรอบ">
-            <Clock className="w-3.5 h-3.5 text-slate-500" />
-            <span>{lab.timeoutMin} นาที</span>
-          </span>
+      {/* Box Footer Actions */}
+      <div className="px-3 py-2 bg-[#f7f7f7] border-t border-[#d8dfea] flex items-center justify-between text-[11px]">
+        <div className="text-gray-500 space-x-2">
+          <span>ผ่านแล้ว: <b className="text-black">{lab.solvesCount || 0} คน</b></span>
+          <span>&bull;</span>
+          <span>เวลา: <b>{lab.timeoutMin} นาที</b></span>
+          {lab.isSolved && (
+            <>
+              <span>&bull;</span>
+              <span className="text-green-700 font-bold">พิชิตแล้ว ✓</span>
+            </>
+          )}
         </div>
 
         <Link
           to={`/labs/${lab.id}`}
-          className={`inline-flex items-center space-x-1.5 font-semibold text-xs px-3 py-1.5 rounded-lg transition ${
-            isActiveInstance
-              ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
-              : 'bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 border border-slate-700'
-          }`}
+          className={isActiveInstance ? 'fb-btn bg-green-600 border-green-800' : 'fb-btn'}
         >
-          <span>{isActiveInstance ? 'เข้าสู่ Lab' : 'เจาะช่องโหว่'}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          {isActiveInstance ? 'กลับเข้าสู่ Lab &rarr;' : 'ดูรายละเอียดและเจาะระบบ &rarr;'}
         </Link>
       </div>
     </div>

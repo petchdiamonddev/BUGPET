@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import ActiveInstanceBar from './components/ActiveInstanceBar';
+import Sidebar from './components/Sidebar';
+import RightSidebar from './components/RightSidebar';
 
 import HomePage from './pages/HomePage';
 import LabsPage from './pages/LabsPage';
@@ -34,48 +36,58 @@ function ProtectedRoute({ children }) {
 
 function Layout() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#eceff5] text-[#1c1e21] font-classic">
       <ActiveInstanceBar />
       <Navbar />
 
-      <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/labs" element={<LabsPage />} />
-          <Route path="/labs/:id" element={<LabDetailPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/badges" element={<BadgesPage />} />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            }
-          />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
+      <div className="max-w-[1020px] w-full mx-auto px-3 py-4 flex flex-col sm:flex-row gap-4 flex-1">
+        {/* Left Sidebar */}
+        <Sidebar />
 
-      <footer className="border-t border-slate-800/80 bg-[#080c14] py-8 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
-            <span className="font-bold text-slate-300">PETBUG</span>
-            <span>—</span>
-            <span>BugForge-Inspired Web Application Pentesting Platform</span>
+        {/* Center Main Feed */}
+        <main className="flex-1 min-w-0">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/labs" element={<LabsPage />} />
+            <Route path="/labs/:id" element={<LabDetailPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/badges" element={<BadgesPage />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+
+        {/* Right Sidebar */}
+        <RightSidebar />
+      </div>
+
+      <footer className="border-t border-[#d8dfea] bg-[#eceff5] py-4 text-center text-[11px] text-gray-500">
+        <div className="max-w-[1020px] mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div>
+            <span className="font-bold text-[#3b5998]">PETBUG</span> &copy; 2026 &bull; BugForge Web Security Platform
           </div>
-          <div className="font-mono text-slate-400">
-            Final Project • React 18 + Tailwind + Express 5 + Prisma 7 + Traefik v3 + Docker
+          <div className="space-x-3 text-[#385898]">
+            <a href="#" className="hover:underline">About</a>
+            <a href="#" className="hover:underline">Security Policy</a>
+            <a href="#" className="hover:underline">Rules of Engagement</a>
+            <a href="#" className="hover:underline">Contact</a>
           </div>
         </div>
       </footer>

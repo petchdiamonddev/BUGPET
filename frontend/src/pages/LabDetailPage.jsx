@@ -1,22 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import {
-  Play,
-  Square,
-  ExternalLink,
-  Copy,
-  Check,
-  CheckCircle2,
-  Clock,
-  Shield,
-  AlertTriangle,
-  Send,
-  Loader2,
-  Terminal,
-  Flag,
-  ArrowLeft,
-} from 'lucide-react';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -50,7 +34,6 @@ export default function LabDetailPage() {
     fetchLabDetail();
   }, [id]);
 
-  // Check if this lab is the currently active one
   const isThisLabActive = activeInstance && activeInstance.labId === parseInt(id, 10);
   const currentInstance = isThisLabActive ? activeInstance : lab?.activeInstance;
 
@@ -74,7 +57,7 @@ export default function LabDetailPage() {
 
   const handleStopInstance = async () => {
     if (!currentInstance) return;
-    if (!confirm('ยืนยันที่จะหยุดการทำงานของ Lab นี้หรือไม่?')) return;
+    if (!confirm('ยืนยันที่จะหยุดการทำงานของ Lab Container นี้หรือไม่?')) return;
     setStopping(true);
     try {
       await apiRequest(`/instances/${currentInstance.id}/stop`, { method: 'POST' });
@@ -117,12 +100,7 @@ export default function LabDetailPage() {
         newBadges: res.newBadges || [],
       });
 
-      // Launch victory confetti!
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.6 },
-      });
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
 
       await refreshUser();
       await refreshActiveInstance();
@@ -138,235 +116,159 @@ export default function LabDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="py-24 text-center text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-400 mb-2" />
-        <p>กำลังโหลดข้อมูล Lab...</p>
-      </div>
-    );
+    return <div className="fb-box p-8 text-center text-gray-500">กำลังโหลดข้อมูลด่าน...</div>;
   }
 
   if (!lab) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Back Button */}
-      <Link
-        to="/labs"
-        className="inline-flex items-center space-x-1.5 text-xs sm:text-sm font-semibold text-slate-400 hover:text-white transition"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>กลับไปยังรายการ Labs</span>
-      </Link>
+    <div className="space-y-4">
+      {/* Breadcrumb Navigation */}
+      <div className="text-xs text-gray-500">
+        <Link to="/labs" className="text-[#385898] hover:underline">ด่านทดสอบทั้งหมด</Link> &raquo; <span>{lab.title}</span>
+      </div>
 
-      {/* Main Lab Header */}
-      <div className="bg-[#0f172a]/80 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div className="flex items-center space-x-2.5">
-            <span
-              className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${
-                lab.difficulty === 'HARD'
-                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                  : lab.difficulty === 'MEDIUM'
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-              }`}
-            >
-              {lab.difficulty}
-            </span>
-            <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1 rounded-full">
-              +{lab.points} POINTS
-            </span>
+      {/* Main Challenge Box */}
+      <div className="fb-box">
+        <div className="fb-box-header flex items-center justify-between">
+          <span className="text-sm font-bold">{lab.title}</span>
+          <span className="font-mono font-bold text-[#3b5998]">+{lab.points} แต้ม</span>
+        </div>
+
+        <div className="p-4 space-y-3 text-xs">
+          <div className="flex items-center space-x-3 text-gray-500 pb-2 border-b border-[#eceff5]">
+            <span>ระดับความยาก: <b className="text-black">{lab.difficulty}</b></span>
+            <span>&bull;</span>
+            <span>จำกัดเวลา: <b>{lab.timeoutMin} นาที</b></span>
+            <span>&bull;</span>
+            <span>ผู้ผ่านด่าน: <b>{lab.solvesCount} คน</b></span>
             {lab.isSolved && (
-              <span className="inline-flex items-center space-x-1 text-xs font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>SOLVED</span>
+              <span className="bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded-[2px] border border-green-300">
+                พิชิตสำเร็จแล้ว ✓
               </span>
             )}
           </div>
 
-          <div className="text-xs text-slate-400 flex items-center space-x-4">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-slate-500" />
-              จำกัดเวลา {lab.timeoutMin} นาที
-            </span>
+          <div>
+            <h3 className="font-bold text-gray-700 mb-1">รายละเอียดและบริบทของภารกิจ</h3>
+            <p className="text-gray-800 leading-relaxed whitespace-pre-line">
+              {lab.description}
+            </p>
           </div>
+
+          {lab.tags && lab.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-1">
+              {lab.tags.map((tag, idx) => (
+                <span key={idx} className="bg-[#f0f2f5] text-gray-600 px-1.5 py-0.5 border border-[#ccd0d5] rounded-[2px]">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-4">
-          {lab.title}
-        </h1>
-
-        <p className="text-slate-300 text-sm sm:text-base leading-relaxed whitespace-pre-line">
-          {lab.description}
-        </p>
-
-        {lab.tags && lab.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-5">
-            {lab.tags.map((tag, idx) => (
-              <span
-                key={idx}
-                className="text-xs font-mono bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Target Environment Box (Container Control) */}
-      <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-          <div className="flex items-center space-x-2.5">
-            <Terminal className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-lg font-bold text-white">Target Environment (Isolated Lab)</h2>
-          </div>
-          <span className="text-xs text-slate-400 font-mono">1 User = 1 Instance</span>
-        </div>
-
-        {/* State: Not Running */}
-        {!currentInstance && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-xl border border-slate-800">
-            <div>
-              <h4 className="font-semibold text-white text-sm">พร้อมเริ่มการทดสอบเจาะระบบ</h4>
-              <p className="text-xs text-slate-400 mt-1">
-                คลิกปุ่มเพื่อสร้าง Docker Container และ Traefik Subdomain เฉพาะของคุณ
-              </p>
-            </div>
-            <button
-              onClick={handleStartInstance}
-              disabled={starting}
-              className="inline-flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 whitespace-nowrap"
-            >
-              {starting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4 fill-current" />
-              )}
-              <span>{starting ? 'กำลังเตรียม Container...' : 'Start Instance'}</span>
-            </button>
-          </div>
-        )}
-
-        {/* State: Running or Starting */}
-        {currentInstance && (
-          <div className="space-y-4">
-            <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center space-x-2">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-sm font-bold text-emerald-400 tracking-wide">
-                    CONTAINER RUNNING
-                  </span>
+      {/* Target Container Environment Box */}
+      <div className="fb-box">
+        <div className="fb-box-header">สภาพแวดล้อมเป้าหมาย (Isolated Container)</div>
+        <div className="p-4 space-y-3">
+          {!currentInstance ? (
+            <div className="bg-[#f7f7f7] border border-[#d8dfea] p-3 rounded-[2px] flex items-center justify-between">
+              <div>
+                <div className="font-bold text-xs text-gray-800">เปิดใช้งาน Lab Container ส่วนบุคคล</div>
+                <div className="text-[11px] text-gray-500">
+                  ระบบจะสร้าง Docker Container พร้อม Subdomain ชี้ผ่าน Traefik สำหรับคุณโดยเฉพาะ
                 </div>
-
+              </div>
+              <button
+                onClick={handleStartInstance}
+                disabled={starting}
+                className="fb-btn"
+              >
+                {starting ? 'กำลังเตรียม Container...' : 'เริ่มระบบ Lab (Start)'}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-[#fff9d7] border border-[#e2c822] p-3 rounded-[2px] space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-green-700">● Container กำลังทำงาน (พร้อมเจาะระบบ)</span>
                 <button
                   onClick={handleStopInstance}
                   disabled={stopping}
-                  className="inline-flex items-center space-x-1.5 text-xs font-semibold bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                  className="fb-btn-danger text-[11px] py-0.5"
                 >
-                  {stopping ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Square className="w-3 h-3 fill-current" />
-                  )}
-                  <span>Stop Instance</span>
+                  {stopping ? 'กำลังหยุด...' : 'หยุดการทำงาน (Stop)'}
                 </button>
               </div>
 
-              {/* URL Display */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 flex items-center justify-between font-mono text-sm text-emerald-300 overflow-x-auto">
-                  <span>{currentInstance.url}</span>
-                  <button
-                    onClick={handleCopyUrl}
-                    className="ml-2 p-1 text-slate-400 hover:text-white transition"
-                    title="คัดลอก URL"
-                  >
-                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  readOnly
+                  value={currentInstance.url}
+                  className="bg-white border border-[#ccd0d5] px-2 py-1 rounded-[2px] font-mono text-xs flex-1 outline-none text-[#3b5998]"
+                />
+                <button onClick={handleCopyUrl} className="fb-btn-secondary text-[11px] py-1">
+                  {copied ? 'คัดลอกแล้ว!' : 'คัดลอก URL'}
+                </button>
                 <a
                   href={currentInstance.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl transition shadow-md shadow-emerald-500/20 whitespace-nowrap"
+                  className="fb-btn text-[11px] py-1"
                 >
-                  <span>เปิด Target URL</span>
-                  <ExternalLink className="w-4 h-4" />
+                  เปิดหน้าเป้าหมายในแท็บใหม่ &rarr;
                 </a>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Flag Submission Box */}
-      <div className="bg-[#0f172a]/90 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6">
-        <div className="flex items-center space-x-2.5 border-b border-slate-800 pb-4">
-          <Flag className="w-5 h-5 text-amber-400" />
-          <h2 className="text-lg font-bold text-white">ส่งคำตอบ (Submit Flag)</h2>
-        </div>
+      <div className="fb-box">
+        <div className="fb-box-header">ส่งคำตอบ (Submit Flag)</div>
+        <div className="p-4 space-y-3 text-xs">
+          <form onSubmit={handleSubmitFlag} className="space-y-2">
+            <label className="block font-bold text-gray-700">
+              เมื่อเจาะระบบสำเร็จและพบ Flag แล้ว กรุณากรอกรหัส Flag เพื่อรับแต้ม:
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={flagInput}
+                onChange={(e) => setFlagInput(e.target.value)}
+                placeholder="PETBUG{...}"
+                disabled={submitting}
+                className="border border-[#ccd0d5] px-3 py-1.5 rounded-[2px] font-mono text-xs flex-1 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={submitting || !flagInput.trim()}
+                className="fb-btn"
+              >
+                {submitting ? 'กำลังตรวจสอบ...' : 'ส่ง Flag'}
+              </button>
+            </div>
+          </form>
 
-        <form onSubmit={handleSubmitFlag} className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={flagInput}
-              onChange={(e) => setFlagInput(e.target.value)}
-              placeholder="PETBUG{...}"
-              disabled={submitting}
-              className="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-3 font-mono text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition shadow-inner"
-            />
-            <button
-              type="submit"
-              disabled={submitting || !flagInput.trim()}
-              className="inline-flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 whitespace-nowrap"
-            >
-              {submitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              <span>ส่ง Flag</span>
-            </button>
-          </div>
-
-          {/* Feedback Alert */}
           {submitResult && (
             <div
-              className={`p-4 rounded-xl border flex items-start space-x-3 ${
+              className={`p-3 rounded-[2px] border ${
                 submitResult.success
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                  : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                  ? 'bg-green-50 border-green-300 text-green-800'
+                  : 'bg-red-50 border-red-300 text-red-800'
               }`}
             >
-              {submitResult.success ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+              <div className="font-bold">{submitResult.message}</div>
+              {submitResult.success && submitResult.points && (
+                <div className="font-mono mt-1 font-bold">
+                  คะแนนที่ได้รับ: +{submitResult.points} แต้ม!
+                </div>
               )}
-              <div className="space-y-1">
-                <div className="font-semibold text-sm">{submitResult.message}</div>
-                {submitResult.success && submitResult.points && (
-                  <div className="text-xs text-emerald-400 font-mono">
-                    คุณได้รับคะแนน +{submitResult.points} PTS!
-                  </div>
-                )}
-                {submitResult.newBadges && submitResult.newBadges.length > 0 && (
-                  <div className="text-xs text-amber-300 font-semibold mt-1">
-                    🏅 ปลดล็อก Achievement ใหม่: {submitResult.newBadges.map((b) => `${b.icon} ${b.name}`).join(', ')}
-                  </div>
-                )}
-              </div>
             </div>
           )}
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Award, Lock, CheckCircle2, Loader2 } from 'lucide-react';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -30,64 +29,46 @@ export default function BadgesPage() {
   const earnedBadgeIds = new Set(userProfile?.badges?.map((b) => b.id) || []);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center space-x-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 px-3.5 py-1 rounded-full text-xs font-semibold">
-          <Award className="w-3.5 h-3.5" />
-          <span>Achievements</span>
+    <div className="space-y-4">
+      <div className="fb-box">
+        <div className="fb-box-header">เหรียญเกียรติยศและความสำเร็จ (Achievements)</div>
+        <div className="p-3 text-xs text-gray-600 border-b border-[#eceff5]">
+          สะสมเหรียญตราเกียรติยศเมื่อผ่านเงื่อนไขการค้นพบช่องโหว่และพิชิตโจทย์ต่างๆ ในระบบ
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-          เหรียญรางวัลเกียรติยศ (Badges)
-        </h1>
-        <p className="text-sm text-slate-400 max-w-lg mx-auto">
-          สะสมเหรียญรางวัลเมื่อผ่านเงื่อนไขการเจาะระบบและพิชิตโจทย์ต่างๆ
-        </p>
+
+        {loading ? (
+          <div className="p-8 text-center text-gray-500 text-xs">กำลังโหลดเหรียญรางวัล...</div>
+        ) : (
+          <div className="divide-y divide-[#eceff5]">
+            {badges.map((b) => {
+              const isEarned = earnedBadgeIds.has(b.id);
+              return (
+                <div key={b.id} className="p-3 flex items-center justify-between text-xs hover:bg-[#f7f7f7]">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">{b.icon}</span>
+                    <div>
+                      <div className="font-bold text-gray-800">{b.name}</div>
+                      <div className="text-gray-500 text-[11px]">{b.description}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    {isEarned ? (
+                      <span className="bg-green-100 text-green-800 border border-green-300 font-bold px-2 py-0.5 rounded-[2px] text-[10px]">
+                        ปลดล็อกแล้ว ✓
+                      </span>
+                    ) : (
+                      <span className="bg-gray-100 text-gray-400 border border-gray-300 px-2 py-0.5 rounded-[2px] text-[10px]">
+                        ยังไม่ปลดล็อก
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {loading ? (
-        <div className="py-20 text-center text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-400 mb-2" />
-          <p>กำลังโหลดรายการเหรียญรางวัล...</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {badges.map((badge) => {
-            const isEarned = earnedBadgeIds.has(badge.id);
-            return (
-              <div
-                key={badge.id}
-                className={`relative bg-[#0f172a]/80 border ${
-                  isEarned
-                    ? 'border-emerald-500/40 bg-gradient-to-b from-[#0f172a] to-emerald-950/20'
-                    : 'border-slate-800 opacity-60'
-                } rounded-2xl p-6 space-y-3 transition hover:-translate-y-0.5`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-4xl">{badge.icon}</span>
-                  {isEarned ? (
-                    <span className="inline-flex items-center space-x-1 text-xs font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>ปลดล็อกแล้ว</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center space-x-1 text-xs font-semibold text-slate-500 bg-slate-800/80 px-2.5 py-0.5 rounded-full border border-slate-700">
-                      <Lock className="w-3 h-3" />
-                      <span>ยังไม่ปลดล็อก</span>
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-white text-base">{badge.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    {badge.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

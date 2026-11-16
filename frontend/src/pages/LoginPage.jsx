@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Bug, Lock, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
@@ -30,81 +29,65 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full bg-[#0f172a]/90 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl backdrop-blur-md">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-600 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/20">
-            <div className="w-full h-full bg-[#080c14] rounded-[14px] flex items-center justify-center">
-              <Bug className="w-6 h-6 text-emerald-400" />
+    <div className="max-w-md mx-auto py-8">
+      <div className="fb-box">
+        <div className="fb-box-header text-sm">เข้าสู่ระบบ PETBUG</div>
+        <div className="p-5 space-y-4 text-xs">
+          {error && (
+            <div className="p-2.5 bg-red-50 border border-red-300 text-red-800 rounded-[2px]">
+              {error}
             </div>
-          </div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight">เข้าสู่ระบบ PETBUG</h2>
-          <p className="text-xs text-slate-400">เข้าสู่ระบบเพื่อเริ่มเจาะระบบใน Lab และเก็บสะสมแต้ม</p>
-        </div>
+          )}
 
-        {error && (
-          <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-          <div>
-            <label className="block text-slate-300 font-medium mb-1.5 text-xs">
-              ชื่อผู้ใช้ หรือ อีเมล
-            </label>
-            <div className="relative">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block font-bold text-gray-700 mb-1">
+                ชื่อผู้ใช้ (Username) หรือ อีเมล:
+              </label>
               <input
                 type="text"
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="admin or hacker_x"
-                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 pl-10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+                placeholder="เช่น admin หรือ hunter_x"
+                className="w-full border border-[#ccd0d5] px-2.5 py-1.5 rounded-[2px] outline-none"
               />
-              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-slate-300 font-medium mb-1.5 text-xs">
-              รหัสผ่าน
-            </label>
-            <div className="relative">
+            <div>
+              <label className="block font-bold text-gray-700 mb-1">
+                รหัสผ่าน (Password):
+              </label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 pl-10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+                className="w-full border border-[#ccd0d5] px-2.5 py-1.5 rounded-[2px] outline-none"
               />
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
             </div>
+
+            <div className="pt-2 flex items-center justify-between">
+              <button
+                type="submit"
+                disabled={loading}
+                className="fb-btn text-xs py-1.5 px-4"
+              >
+                {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+              </button>
+
+              <Link to="/register" className="text-[#385898] hover:underline">
+                ยังไม่มีบัญชี? สมัครที่นี่
+              </Link>
+            </div>
+          </form>
+
+          <div className="p-2 bg-[#f7f7f7] border border-[#d8dfea] text-[11px] text-gray-600 rounded-[2px]">
+            <b>บัญชีทดสอบเริ่มต้น:</b><br />
+            - ผู้ดูแลระบบ: <code>admin</code> / <code>Admin@123456</code><br />
+            - ผู้เล่นทดสอบ: <code>hunter_x</code> / <code>Player@123456</code>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full inline-flex items-center justify-center space-x-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20 disabled:opacity-50 mt-2"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <span>เข้าสู่ระบบ</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800">
-          ยังไม่มีบัญชี?{' '}
-          <Link to="/register" className="text-emerald-400 hover:underline font-semibold">
-            สมัครสมาชิกใหม่
-          </Link>
         </div>
       </div>
     </div>

@@ -4,28 +4,27 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        primary: {
-          DEFAULT: '#10b981', // Emerald 500
-          hover: '#059669',
-          foreground: '#ffffff',
+        fb: {
+          blue: '#3b5998',
+          darkBlue: '#2d4373',
+          lightBlue: '#6d84b4',
+          bg: '#eceff5',
+          card: '#ffffff',
+          border: '#d8dfea',
+          hover: '#eceff5',
+          text: '#1c1e21',
+          subtext: '#65676b',
+          link: '#385898',
+          yellow: '#fff9d7',
+          yellowBorder: '#e2c822',
+          green: '#42b72a',
         },
-        cyber: {
-          dark: '#080c14',
-          card: '#0f172a',
-          cardHover: '#17233d',
-          border: '#1e293b',
-          accent: '#06b6d4',
-          glow: '#10b981',
-        },
+      },
+      fontFamily: {
+        classic: ['"Lucida Grande"', 'Tahoma', 'Verdana', 'Arial', 'sans-serif'],
       },
     },
   },

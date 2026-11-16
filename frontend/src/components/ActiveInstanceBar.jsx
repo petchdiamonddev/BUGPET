@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, Square, Clock, Terminal, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest } from '../lib/api';
 
@@ -17,7 +16,7 @@ export default function ActiveInstanceBar() {
       const diff = end - now;
 
       if (diff <= 0) {
-        setTimeLeft('หมดเวลา');
+        setTimeLeft('หมดเวลาแล้ว');
         refreshActiveInstance();
         return;
       }
@@ -37,7 +36,7 @@ export default function ActiveInstanceBar() {
   const isStarting = activeInstance.status === 'STARTING';
 
   const handleStop = async () => {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการหยุด Lab นี้?')) return;
+    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการหยุดการทำงานของ Lab Container นี้?')) return;
     setStopping(true);
     try {
       await apiRequest(`/instances/${activeInstance.id}/stop`, { method: 'POST' });
@@ -51,59 +50,37 @@ export default function ActiveInstanceBar() {
   };
 
   return (
-    <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 border-b border-emerald-500/30 backdrop-blur-md px-4 py-2.5 text-sm sticky top-0 z-50 shadow-lg shadow-emerald-950/20">
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-        {/* Left: Indicator & Info */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <span className="relative flex h-3 w-3">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isStarting ? 'bg-amber-400' : 'bg-emerald-400'} opacity-75`}></span>
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${isStarting ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-            </span>
-            <span className="font-semibold text-white tracking-wide flex items-center gap-1.5">
-              <Terminal className="w-4 h-4 text-emerald-400" />
-              {activeInstance.labTitle}
-            </span>
-          </div>
-
-          <span className="hidden sm:inline-block text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono border border-slate-700">
-            {activeInstance.subdomain}
-          </span>
+    <div className="bg-[#fff9d7] border-b border-[#e2c822] text-[#333333] px-4 py-2 text-xs shadow-sm">
+      <div className="max-w-[1020px] mx-auto flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center space-x-2">
+          <span className="inline-block w-2.5 h-2.5 bg-green-500 border border-green-700 rounded-full animate-pulse"></span>
+          <span className="font-bold text-[#3b5998]">ด่านที่กำลังเปิดใช้งาน:</span>
+          <span className="font-semibold">{activeInstance.labTitle}</span>
+          <span className="text-gray-500 font-mono">({activeInstance.subdomain})</span>
         </div>
 
-        {/* Right: Actions & Countdown */}
-        <div className="flex items-center space-x-3 text-xs sm:text-sm">
-          {/* Timer */}
-          <div className="flex items-center space-x-1.5 bg-slate-900/80 px-2.5 py-1 rounded-md border border-slate-800 text-slate-200 font-mono">
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
-            <span>{isStarting ? 'กำลังเตรียม Container...' : timeLeft}</span>
-          </div>
+        <div className="flex items-center space-x-3">
+          <span className="font-bold font-mono bg-white px-2 py-0.5 border border-[#e2c822] rounded-[2px]">
+            เวลาที่เหลือ: {isStarting ? 'กำลังเตรียม Container...' : timeLeft}
+          </span>
 
-          {/* Target URL */}
           {!isStarting && (
             <a
               href={activeInstance.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3 py-1 rounded-md transition shadow-sm hover:shadow-emerald-500/20"
+              className="fb-btn text-[11px] py-0.5 px-2"
             >
-              <span>เปิด Target Lab</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              เปิดเว็บเป้าหมาย &rarr;
             </a>
           )}
 
-          {/* Stop Button */}
           <button
             onClick={handleStop}
             disabled={stopping}
-            className="inline-flex items-center space-x-1 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 px-2.5 py-1 rounded-md transition disabled:opacity-50"
+            className="fb-btn-danger text-[11px] py-0.5 px-2"
           >
-            {stopping ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Square className="w-3 h-3 fill-current" />
-            )}
-            <span>หยุด Lab</span>
+            {stopping ? 'กำลังหยุด...' : 'หยุดการทำงาน'}
           </button>
         </div>
       </div>
