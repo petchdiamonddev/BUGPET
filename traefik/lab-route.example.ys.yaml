@@ -1,0 +1,33 @@
+# Example of the route file PETBUG generates — TEMPLATE ONLY.
+#
+# This directory is read by Traefik's file provider, which loads EVERY file in
+# it and rejects the whole configuration if one file is invalid. That is why
+# this template lives OUTSIDE traefik/dynamic (marked .ys.yaml, a name Traefik
+# does not load).
+#
+# Generated files:
+#   traefik/dynamic/petbug-app.yaml     – the web app route (written by route-sync at boot)
+#   traefik/dynamic/lab-<token>.yaml    – one per running lab (written by the API)
+#
+# Validated by tests: `docker compose -f docker-compose.local.yml config` and a
+# Traefik restart in server/tests/docker-smoke.mjs.
+
+http:
+  routers:
+    lab-EXAMPLE:
+      rule: "Host(`example.lab.example.com`) || Host(`example.lab.localhost`)"
+      entryPoints:
+        - web
+      service: lab-EXAMPLE
+    lab-EXAMPLE-tls:
+      rule: "Host(`example.lab.example.com`)"
+      entryPoints:
+        - websecure
+      service: lab-EXAMPLE
+      tls:
+        certResolver: le
+  services:
+    lab-EXAMPLE:
+      loadBalancer:
+        servers:
+          - url: "http://petbug-lab-EXAMPLE:80"

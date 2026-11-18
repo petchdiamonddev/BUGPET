@@ -1,11 +1,21 @@
 # Environment files
 .env
 *.local
+!.env.example
 
 # Node
 node_modules/
 npm-debug.log*
 
-# Traefik dynamic runtime configs
+# Build output
+dist/
+
+# Traefik dynamic runtime configs (written by the API / route-sync at boot)
 traefik/dynamic/*.yaml
+!traefik/dynamic/00-app.yml
+traefik/dynamic/*.example
 !traefik/dynamic/.gitkeep
+
+# Local review artefacts (screenshots / ACL recovery reports)
+.review/
+.dsh-acl-recovery/

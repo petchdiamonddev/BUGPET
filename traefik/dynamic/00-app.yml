@@ -1,0 +1,33 @@
+# Static Traefik middlewares/services shared by every deployment.
+#
+# route-sync writes traefik/dynamic/petbug-app.yaml (the APP_HOST router) and
+# the API writes traefik/dynamic/lab-<token>.yaml for each running lab.
+#
+# ⚠️ Traefik loads EVERY file in this directory and rejects the whole config if
+# one file is invalid, which removes all routes at once. Only *.yaml files with
+# valid schema belong here; a template with placeholders must live elsewhere
+# (see ../lab-route.example.ys.yaml).
+
+http:
+  middlewares:
+    # Forces HTTPS for lab routers when TLS is enabled.
+    lab-redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+    # Security headers on the app's HTTPS router.
+    secure-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        frameDeny: true
+        referrerPolicy: strict-origin-when-cross-origin
+
+  services:
+    # The SPA container's service name referenced by the generated app route.
+    petbug-web:
+      loadBalancer:
+        servers:
+          - url: "http://petbug-web:80"

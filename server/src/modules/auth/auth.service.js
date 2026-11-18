@@ -1,116 +1,155 @@
 import { prisma } from '../../config/prisma.js';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { badRequest, unauthorized, forbidden } from '../../utils/errors.js';
+import { signAccessToken, signRefreshToken } from '../../middlewares/auth.middleware.js';
+
+const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,24}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const safeUser = (user) => ({
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  role: user.role,
+  points: user.points,
+  bio: user.bio,
+  createdAt: user.createdAt,
+  lastLoginAt: user.lastLoginAt,
+});
 
 class AuthService {
   async register({ username, email, password }) {
-    if (!username || !email || !password) {
-      throw new Error('กรุณากรอกข้อมูลให้ครบถ้วน');
+    const cleanUsername = String(username ?? '').trim();
+    const cleanEmail = String(email ?? '').trim().toLowerCase();
+
+    if (!cleanUsername || !cleanEmail || !password) {
+      throw badRequest('กรุณากรอกข้อมูลให้ครบถ้วน', 'MISSING_FIELDS');
+    }
+    if (!USERNAME_RE.test(cleanUsername)) {
+      throw badRequest('ชื่อผู้ใช้ใช้ได้เฉพาะ a-z, 0-9, _ . - และยาว 3–24 ตัวอักษร', 'INVALID_USERNAME');
+    }
+    if (!EMAIL_RE.test(cleanEmail)) {
+      throw badRequest('รูปแบบอีเมลไม่ถูกต้อง', 'INVALID_EMAIL');
+    }
+    if (String(password).length < 8) {
+      throw badRequest('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 'WEAK_PASSWORD');
     }
 
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username }],
-      },
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ email: cleanEmail }, { username: { equals: cleanUsername, mode: 'insensitive' } }] },
+      select: { email: true, username: true },
     });
 
-    if (existingUser) {
-      if (existingUser.email === email) {
-        throw new Error('อีเมลนี้มีอยู่ในระบบแล้ว');
-      }
-      if (existingUser.username === username) {
-        throw new Error('ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว');
-      }
+    if (existing) {
+      if (existing.email === cleanEmail) throw badRequest('อีเมลนี้ถูกใช้งานแล้ว', 'EMAIL_TAKEN');
+      throw badRequest('ชื่อผู้ใช้นี้ถูกใช้งานแล้ว', 'USERNAME_TAKEN');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
-        username,
-        email,
-        password: hashedPassword,
+        username: cleanUsername,
+        email: cleanEmail,
+        password: await bcrypt.hash(String(password), 10),
       },
     });
 
-    const { password: _, ...safeUser } = newUser;
-    return safeUser;
+    return safeUser(user);
   }
 
   async login({ identifier, password }) {
-    if (!identifier || !password) {
-      throw new Error('กรุณากรอกชื่อผู้ใช้/อีเมล และรหัสผ่าน');
+    const cleanIdentifier = String(identifier ?? '').trim();
+    if (!cleanIdentifier || !password) {
+      throw badRequest('กรุณากรอกชื่อผู้ใช้/อีเมล และรหัสผ่าน', 'MISSING_FIELDS');
     }
 
     const user = await prisma.user.findFirst({
       where: {
-        OR: [{ username: identifier }, { email: identifier }],
+        OR: [{ username: cleanIdentifier }, { email: cleanIdentifier.toLowerCase() }],
       },
     });
 
-    // ป้องกัน User Enumeration Attack โดยใช้ Error Message เดียวกัน
-    if (!user) {
-      throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-    }
+    // Same message for unknown user and wrong password (no user enumeration).
+    if (!user) throw unauthorized('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'INVALID_CREDENTIALS');
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-    }
+    const isMatch = await bcrypt.compare(String(password), user.password);
+    if (!isMatch) throw unauthorized('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', 'INVALID_CREDENTIALS');
 
-    const accessToken = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '15m' }
-    );
+    if (user.isBanned) throw forbidden('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ', 'ACCOUNT_BANNED');
 
-    const refreshToken = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
-    const { password: _, ...safeUser } = user;
-    return { user: safeUser, accessToken, refreshToken };
+    return {
+      user: safeUser(user),
+      accessToken: signAccessToken(user),
+      refreshToken: signRefreshToken(user),
+    };
   }
 
-  async refreshToken(refreshToken) {
-    if (!refreshToken) {
-      throw new Error('ไม่มี Refresh Token ในระบบ');
-    }
+  /**
+   * Silent renewal used by the SPA on boot and when an access token expires.
+   * The refresh token lives in an HttpOnly cookie so a stolen localStorage
+   * value can never mint new sessions.
+   */
+  async refresh(refreshToken) {
+    if (!refreshToken) throw unauthorized('ไม่พบเซสชันการเข้าสู่ระบบ', 'NO_REFRESH_TOKEN');
 
+    const { verify } = await import('jsonwebtoken');
     let payload;
     try {
-      payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+      payload = verify(refreshToken, process.env.JWT_SECRET);
     } catch (err) {
-      throw new Error('Refresh Token ไม่ถูกต้องหรือหมดอายุ');
+      throw unauthorized('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'REFRESH_EXPIRED');
+    }
+    if (payload.typ && payload.typ !== 'refresh') {
+      throw unauthorized('Refresh token ไม่ถูกต้อง', 'INVALID_REFRESH_TOKEN');
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-    });
+    const user = await prisma.user.findUnique({ where: { id: payload.id } });
+    if (!user) throw unauthorized('ไม่พบข้อมูลผู้ใช้', 'USER_NOT_FOUND');
+    if (user.isBanned) throw forbidden('บัญชีนี้ถูกระงับการใช้งาน', 'ACCOUNT_BANNED');
 
-    if (!user) {
-      throw new Error('ไม่พบข้อมูลผู้ใช้');
-    }
-
-    const newAccessToken = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '15m' }
-    );
-
-    return { accessToken: newAccessToken };
+    return {
+      user: safeUser(user),
+      accessToken: signAccessToken(user),
+      refreshToken: signRefreshToken(user),
+    };
   }
 
   async getMe(userId) {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw unauthorized('ไม่พบข้อมูลผู้ใช้', 'USER_NOT_FOUND');
+
+    const [solves, badges] = await Promise.all([
+      prisma.solve.count({ where: { userId } }),
+      prisma.userBadge.count({ where: { userId } }),
+    ]);
+
+    return { ...safeUser(user), solvesCount: solves, badgesCount: badges };
+  }
+
+  async updateProfile(userId, { bio }) {
+    const user = await prisma.user.update({
       where: { id: userId },
+      data: { bio: bio?.slice(0, 280) ?? null },
     });
-    if (!user) {
-      throw new Error('ไม่พบข้อมูลผู้ใช้');
+    return safeUser(user);
+  }
+
+  async changePassword(userId, { currentPassword, newPassword }) {
+    if (!newPassword || String(newPassword).length < 8) {
+      throw badRequest('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร', 'WEAK_PASSWORD');
     }
-    const { password: _, ...safeUser } = user;
-    return safeUser;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw unauthorized('ไม่พบข้อมูลผู้ใช้');
+
+    const isMatch = await bcrypt.compare(String(currentPassword ?? ''), user.password);
+    if (!isMatch) throw badRequest('รหัสผ่านปัจจุบันไม่ถูกต้อง', 'INVALID_CURRENT_PASSWORD');
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: await bcrypt.hash(String(newPassword), 10) },
+    });
+    return { message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' };
   }
 }
 

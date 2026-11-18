@@ -2,17 +2,23 @@ services:
   traefik:
     image: traefik:v3.1
     container_name: petbug-traefik
+    # Traefik reads lab routes from ./traefik/dynamic. The file provider's
+    # watcher does not receive inotify events for bind mounts on Docker Desktop
+    # (Windows/macOS), so the API restarts this container after route changes
+    # (TRAEFIK_RELOAD=restart, see server/src/services/docker.service.js).
     command:
       - "--api.insecure=true"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
-      - "--log.level=DEBUG"
+      - "--log.level=INFO"
     ports:
       - "80:80"
       - "8080:8080" # Traefik dashboard
     volumes:
-      - ./traefik/dynamic:/etc/traefik/dynamic
+      - type: bind
+        source: ./traefik/dynamic
+        target: /etc/traefik/dynamic
     networks:
       - petbug_net
 

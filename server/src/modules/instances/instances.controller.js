@@ -1,84 +1,42 @@
 import { instancesService } from './instances.service.js';
 
 class InstancesController {
-  async startLab(req, res, next) {
-    try {
-      const labId = parseInt(req.params.labId || req.body.labId, 10);
-      const userId = req.user.id;
+  async startLab(req, res) {
+    const { instance, reused } = await instancesService.startLabInstance(req.user.id, req.params.labId);
 
-      const instance = await instancesService.startLabInstance(userId, labId);
-      res.status(201).json({
-        success: true,
-        message: 'กำลังเริ่มระบบ Lab ของคุณ...',
-        data: instance,
-      });
-    } catch (error) {
-      if (error.status) {
-        return res.status(error.status).json({
-          success: false,
-          message: error.message,
-          activeInstanceId: error.activeInstanceId,
-        });
-      }
-      next(error);
-    }
+    res.status(reused ? 200 : 201).json({
+      success: true,
+      message: reused ? 'ด่านนี้กำลังทำงานอยู่แล้ว' : 'กำลังเตรียม container ให้คุณ…',
+      data: instance,
+      meta: { reused },
+    });
   }
 
-  async stopInstance(req, res, next) {
-    try {
-      const instanceId = req.params.id;
-      const userId = req.user.id;
-      const isAdmin = req.user.role === 'ADMIN';
-
-      const result = await instancesService.stopLabInstance(userId, instanceId, isAdmin);
-      res.status(200).json({
-        success: true,
-        ...result,
-      });
-    } catch (error) {
-      if (error.status) {
-        return res.status(error.status).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
-    }
+  async stopInstance(req, res) {
+    const isAdmin = req.user.role === 'ADMIN';
+    const result = await instancesService.stopLabInstance(req.user.id, req.params.id, isAdmin);
+    res.status(200).json({ success: true, message: result.message, data: result.instance });
   }
 
-  async getActiveInstance(req, res, next) {
-    try {
-      const userId = req.user.id;
-      const active = await instancesService.getActiveInstance(userId);
-      res.status(200).json({
-        success: true,
-        data: active,
-      });
-    } catch (error) {
-      next(error);
-    }
+  async getActiveInstance(req, res) {
+    const active = await instancesService.getActiveInstance(req.user.id);
+    res.status(200).json({ success: true, data: active });
   }
 
-  async getInstanceStatus(req, res, next) {
-    try {
-      const instanceId = req.params.id;
-      const userId = req.user.id;
-      const isAdmin = req.user.role === 'ADMIN';
+  async getInstanceStatus(req, res) {
+    const status = await instancesService.getInstanceStatus(
+      req.params.id,
+      req.user.id,
+      req.user.role === 'ADMIN'
+    );
+    res.status(200).json({ success: true, data: status });
+  }
 
-      const status = await instancesService.getInstanceStatus(instanceId, userId, isAdmin);
-      res.status(200).json({
-        success: true,
-        data: status,
-      });
-    } catch (error) {
-      if (error.status) {
-        return res.status(error.status).json({
-          success: false,
-          message: error.message,
-        });
-      }
-      next(error);
-    }
+  async getHistory(req, res) {
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit ?? '10', 10) || 10, 1), 50);
+    const page = Math.max(Number.parseInt(req.query.page ?? '1', 10) || 1, 1);
+    const history = await instancesService.getInstanceHistory(req.user.id, { limit, page });
+    res.status(200).json({ success: true, data: history.items, meta: history });
   }
 }
 

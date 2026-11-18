@@ -1,116 +1,127 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { apiRequest } from '../lib/api';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { authApi, api, ApiError, setToken, getToken } from '../lib/api';
 
 const AuthContext = createContext(null);
+
+const EMPTY_SESSION = { user: null, activeInstance: null };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [activeInstance, setActiveInstance] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshActiveInstance = useCallback(async () => {
+  const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('petbug_token');
-      if (!token) {
-        setActiveInstance(null);
-        return;
-      }
-      const res = await apiRequest('/instances/active');
-      setActiveInstance(res.data || null);
-    } catch (err) {
-      setActiveInstance(null);
+      const res = await authApi.me();
+      setUser(res.data);
+      return res.data;
+    } catch {
+      return null;
     }
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('petbug_token');
-      if (!token) {
-        setUser(null);
-        setActiveInstance(null);
-        setLoading(false);
-        return;
-      }
-      const res = await apiRequest('/auth/me');
-      setUser(res.data || null);
-      await refreshActiveInstance();
-    } catch (err) {
-      localStorage.removeItem('petbug_token');
-      setUser(null);
+  const refreshActiveInstance = useCallback(async () => {
+    if (!getToken()) {
       setActiveInstance(null);
+      return null;
+    }
+    try {
+      const res = await api.get('/instances/active');
+      setActiveInstance(res.data ?? null);
+      return res.data ?? null;
+    } catch {
+      setActiveInstance(null);
+      return null;
+    }
+  }, []);
+
+  const bootstrap = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (getToken()) {
+        await authApi.me().then((r) => setUser(r.data));
+      } else {
+        // No access token in storage — the HttpOnly session cookie may still
+        // be valid (e.g. opened in a new tab), so try to restore silently.
+        try {
+          const session = await authApi.refresh();
+          setToken(session.accessToken);
+          setUser(session.user);
+        } catch {
+          setUser(null);
+        }
+      }
+      await refreshActiveInstance();
     } finally {
       setLoading(false);
     }
   }, [refreshActiveInstance]);
 
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+    bootstrap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Periodic poll for active instance status when one is running
-  useEffect(() => {
-    if (!activeInstance) return;
-    const interval = setInterval(() => {
-      refreshActiveInstance();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [activeInstance, refreshActiveInstance]);
+  const login = useCallback(
+    async (identifier, password) => {
+      const res = await authApi.login(identifier, password);
+      setToken(res.data.accessToken);
+      setUser(res.data.user);
+      await refreshActiveInstance();
+      return res.data.user;
+    },
+    [refreshActiveInstance]
+  );
 
-  const login = async (identifier, password) => {
-    const res = await apiRequest('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ identifier, password }),
-    });
-    if (res.data?.accessToken) {
-      localStorage.setItem('petbug_token', res.data.accessToken);
-    }
-    setUser(res.data.user);
-    await refreshActiveInstance();
-    return res;
-  };
+  const register = useCallback(
+    async (username, email, password) => {
+      await authApi.register(username, email, password);
+      return login(username, password);
+    },
+    [login]
+  );
 
-  const register = async (username, email, password) => {
-    const res = await apiRequest('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ username, email, password }),
-    });
-    // Auto-login after register
-    return await login(username, password);
-  };
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
-      await apiRequest('/auth/logout', { method: 'POST' });
-    } catch (e) {
-      // ignore
+      await authApi.logout();
+    } catch {
+      /* ignore */
     }
-    localStorage.removeItem('petbug_token');
+    setToken(null);
     setUser(null);
     setActiveInstance(null);
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        activeInstance,
-        loading,
-        login,
-        register,
-        logout,
-        refreshUser,
-        refreshActiveInstance,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const applyPoints = useCallback((points) => {
+    setUser((u) => (u ? { ...u, points } : u));
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      user,
+      activeInstance,
+      loading,
+      isAuthenticated: Boolean(user),
+      isAdmin: user?.role === 'ADMIN',
+      login,
+      register,
+      logout,
+      refreshUser,
+      refreshActiveInstance,
+      applyPoints,
+      setUser,
+      setActiveInstance,
+    }),
+    [user, activeInstance, loading, login, register, logout, refreshUser, refreshActiveInstance, applyPoints]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }
+
+export { EMPTY_SESSION, ApiError };

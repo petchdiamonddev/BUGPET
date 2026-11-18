@@ -31,12 +31,18 @@ model User {
   password     String
   role         ROLE          @default(USER)
   points       Int           @default(0)
+  bio          String?
+  avatarColor  String?
+  isBanned     Boolean       @default(false)
+  lastLoginAt  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   labInstances LabInstance[]
   solves       Solve[]
   badges       UserBadge[]
+
+  @@index([points(sort: Desc)])
 }
 
 model Lab {
@@ -67,12 +73,14 @@ model LabInstance {
   startedAt   DateTime       @default(now())
   expiresAt   DateTime
   stoppedAt   DateTime?
+  stopReason  String?
   error       String?
 
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   lab         Lab            @relation(fields: [labId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
+  @@index([status])
 }
 
 model Solve {
@@ -85,6 +93,7 @@ model Solve {
   lab      Lab      @relation(fields: [labId], references: [id], onDelete: Cascade)
 
   @@unique([userId, labId])
+  @@index([labId, solvedAt])
 }
 
 model Badge {
@@ -93,6 +102,8 @@ model Badge {
   description String
   icon        String
   condition   String
+  tier        String      @default("BRONZE")
+  points      Int         @default(0)
 
   userBadges  UserBadge[]
 }

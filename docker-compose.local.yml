@@ -1,0 +1,152 @@
+# PETBUG — full stack in Docker for local testing / LAN demos (no TLS).
+#
+#   docker compose -f docker-compose.local.yml up -d --build
+#   open http://petbug.localhost        (app)
+#   labs: <token>.lab.localhost         (printed when you press Start)
+#
+# The production variant (TLS, ACME, secrets from .env) is
+# docker-compose.prod.yml. Both share the same images and Traefik setup.
+
+services:
+  route-sync:
+    image: curlimages/curl:8.10.1
+    container_name: petbug-route-sync
+    restart: "no"
+    entrypoint: ["/bin/sh", "/bootstrap.sh"]
+    environment:
+      APP_HOST: ${APP_HOST:-petbug.localhost}
+      TLS_ENABLED: "false"
+    volumes:
+      - ./docker/traefik-bootstrap.sh:/bootstrap.sh:ro
+      # Shared with Traefik: route-sync writes the app route file here.
+      - type: bind
+        source: ./traefik/dynamic
+        target: /etc/traefik/dynamic
+    depends_on:
+      traefik:
+        condition: service_started
+    networks:
+      - petbug_net
+
+  traefik:
+    image: traefik:v3.1
+    container_name: petbug-traefik
+    restart: unless-stopped
+    command:
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - type: bind
+        source: ./traefik/dynamic
+        target: /etc/traefik/dynamic
+    networks:
+      - petbug_net
+
+  web:
+    build:
+      context: ./frontend
+    image: petbug/web:latest
+    container_name: petbug-web
+    restart: unless-stopped
+    networks:
+      - petbug_net
+
+  api:
+    build:
+      context: ./server
+    image: petbug/api:latest
+    container_name: petbug-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://pet:petbug@db:5432/bugpet?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: local-dev-secret-change-me-in-production-0123456789
+      BASE_LAB_DOMAIN: ${LAB_BASE_DOMAIN:-lab.localhost}
+      LAB_URL_SCHEME: http
+      TLS_ENABLED: "false"
+      TRAEFIK_NETWORK: petbug_net
+      TRAEFIK_DYNAMIC_DIR: /traefik/dynamic
+      TRAEFIK_CONTAINER: petbug-traefik
+      TRAEFIK_RELOAD: restart
+      DOCKER_SOCKET: /var/run/docker.sock
+      # gid of /var/run/docker.sock on the host (default 0 = root group).
+      DOCKER_GID: "${DOCKER_GID:-0}"
+      SEED_ON_START: ${SEED_ON_START:-true}
+      LOG_LEVEL: info
+    # Join the docker socket's group so the non-root `node` user can use it.
+    group_add:
+      - "${DOCKER_GID:-0}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - type: bind
+        source: ./traefik/dynamic
+        target: /traefik/dynamic
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - petbug_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  db:
+    image: postgres:16-alpine
+    container_name: petbug-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bugpet
+      POSTGRES_USER: pet
+      POSTGRES_PASSWORD: petbug
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - petbug_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pet -d bugpet"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: petbug-redis
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    networks:
+      - petbug_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks:
+  petbug_net:
+    name: petbug_net
+    driver: bridge
+
+volumes:
+  # Prefixed so the containerised stack never shares data with `db push` dev
+  # databases (different credentials/history would break migrations).
+  pgdata:
+    name: petbug_local_pgdata
+  redisdata:
+    name: petbug_local_redisdata

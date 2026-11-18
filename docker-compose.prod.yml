@@ -1,0 +1,167 @@
+services:
+  # Writes the APP_HOST router (traefik/dynamic/petbug-app.yaml) once Traefik is
+  # up, then exits. Traefik's file provider cannot interpolate ${APP_HOST}, so
+  # this is the bridge between .env and the routing table.
+  route-sync:
+    image: curlimages/curl:8.10.1
+    container_name: petbug-route-sync
+    restart: "no"
+    entrypoint: ["/bin/sh", "/bootstrap.sh"]
+    environment:
+      APP_HOST: ${APP_HOST:?set APP_HOST in .env}
+      TLS_ENABLED: ${TLS_ENABLED:-true}
+    volumes:
+      - ./docker/traefik-bootstrap.sh:/bootstrap.sh:ro
+      # Shared with Traefik: route-sync writes the app route file here.
+      - type: bind
+        source: ./traefik/dynamic
+        target: /etc/traefik/dynamic
+    depends_on:
+      traefik:
+        condition: service_started
+    networks:
+      - petbug_net
+
+  traefik:
+    image: traefik:v3.1
+    container_name: petbug-traefik
+    restart: unless-stopped
+    # The dynamic API is published on 8080 INSIDE the network only (used by
+    # route-sync and the API's reload step) — it is not exposed on the host.
+    command:
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL:?set ACME_EMAIL in .env}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.caserver=${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}"
+      - "--log.level=${TRAEFIK_LOG_LEVEL:-INFO}"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - type: bind
+        source: ./traefik/dynamic
+        target: /etc/traefik/dynamic
+      - letsencrypt:/letsencrypt
+    networks:
+      - petbug_net
+
+  web:
+    build:
+      context: ./frontend
+    image: petbug/web:latest
+    container_name: petbug-web
+    restart: unless-stopped
+    networks:
+      - petbug_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  api:
+    build:
+      context: ./server
+    image: petbug/api:latest
+    container_name: petbug-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-bugpet}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      BASE_LAB_DOMAIN: ${LAB_BASE_DOMAIN}
+      LAB_URL_SCHEME: ${LAB_URL_SCHEME:-https}
+      TLS_ENABLED: ${TLS_ENABLED:-true}
+      TRAEFIK_NETWORK: petbug_net
+      TRAEFIK_DYNAMIC_DIR: /traefik/dynamic
+      TRAEFIK_CONTAINER: petbug-traefik
+      # File-provider watchers are unreliable for bind mounts; the API asks
+      # Traefik to reload after writing/removing a lab route.
+      TRAEFIK_RELOAD: ${TRAEFIK_RELOAD:-restart}
+      DOCKER_SOCKET: /var/run/docker.sock
+      # gid of /var/run/docker.sock on the host (default 0 = root group).
+      DOCKER_GID: "${DOCKER_GID:-0}"
+      LAB_ALLOW_PULL: ${LAB_ALLOW_PULL:-true}
+    # Join the docker socket's group so the non-root `node` user can use it.
+    group_add:
+      - "${DOCKER_GID:-0}"
+    volumes:
+      # Lets the API create/stop lab containers on the host daemon.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared with Traefik: lab route files written by the API.
+      - type: bind
+        source: ./traefik/dynamic
+        target: /traefik/dynamic
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - petbug_net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  db:
+    image: postgres:16-alpine
+    container_name: petbug-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bugpet}
+      POSTGRES_USER: ${POSTGRES_USER:-pet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - petbug_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pet} -d ${POSTGRES_DB:-bugpet}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: petbug-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    networks:
+      - petbug_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+networks:
+  petbug_net:
+    name: petbug_net
+    driver: bridge
+
+volumes:
+  # Explicit names keep the production data separate from any dev stack that
+  # happens to use the same directory name.
+  pgdata:
+    name: petbug_prod_pgdata
+  redisdata:
+    name: petbug_prod_redisdata
+  letsencrypt:
+    name: petbug_prod_letsencrypt

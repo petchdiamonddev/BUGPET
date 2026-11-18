@@ -1,116 +1,97 @@
 import { prisma } from '../../config/prisma.js';
 import { badgesService } from '../badges/badges.service.js';
-import { instancesService } from '../instances/instances.service.js';
+import { dockerService } from '../../services/docker.service.js';
 import { logger } from '../../config/logger.js';
+import { badRequest, notFound } from '../../utils/errors.js';
 
 class SolvesService {
-  async submitFlag(userId, labId, submittedFlag) {
-    if (!submittedFlag || typeof submittedFlag !== 'string') {
-      const err = new Error('กรุณาระบุ Flag ที่ถูกต้อง');
-      err.status = 400;
-      throw err;
-    }
+  /**
+   * Validates a submitted flag. Wrong flags are a normal outcome (400 with
+   * `isCorrect: false`), not an exception the UI has to parse out of a
+   * generic error message.
+   */
+  async submitFlag(user, labId, submittedFlag) {
+    const lab = await prisma.lab.findUnique({ where: { id: labId } });
 
-    const lab = await prisma.lab.findUnique({
-      where: { id: labId },
-    });
+    if (!lab || !lab.isActive) throw notFound('ไม่พบด่านนี้ หรือด่านถูกปิดใช้งานอยู่');
 
-    if (!lab || !lab.isActive) {
-      const err = new Error('ไม่พบข้อมูล Lab หรือ Lab ไม่ได้เปิดใช้งาน');
-      err.status = 404;
-      throw err;
-    }
-
-    // Check if user already solved this lab
     const existingSolve = await prisma.solve.findUnique({
-      where: {
-        userId_labId: {
-          userId,
-          labId,
-        },
-      },
+      where: { userId_labId: { userId: user.id, labId } },
     });
-
     if (existingSolve) {
-      const err = new Error('คุณเคยพิชิต Lab นี้และได้รับคะแนนไปแล้ว');
-      err.status = 400;
-      throw err;
+      throw badRequest('คุณเคยพิชิตด่านนี้ไปแล้ว', 'ALREADY_SOLVED', { solvedAt: existingSolve.solvedAt });
     }
 
-    // Compare flag
     const isCorrect = submittedFlag.trim() === lab.flag.trim();
     if (!isCorrect) {
       return {
         success: false,
         isCorrect: false,
-        message: '❌ Flag ไม่ถูกต้อง! กรุณาตรวจสอบและลองใหม่อีกครั้ง',
+        code: 'WRONG_FLAG',
+        message: 'Flag ไม่ถูกต้อง ลองตรวจสอบ payload หรือ encoding ของคุณอีกครั้ง',
       };
     }
 
-    // Correct flag: record solve and add points in transaction
     const [solveRecord, updatedUser] = await prisma.$transaction([
-      prisma.solve.create({
-        data: {
-          userId,
-          labId,
-        },
-      }),
+      prisma.solve.create({ data: { userId: user.id, labId }, select: { solvedAt: true } }),
       prisma.user.update({
-        where: { id: userId },
-        data: {
-          points: { increment: lab.points },
-        },
-        select: {
-          id: true,
-          username: true,
-          points: true,
-        },
+        where: { id: user.id },
+        data: { points: { increment: lab.points } },
+        select: { id: true, username: true, points: true },
       }),
     ]);
 
-    logger.info({ msg: 'Lab solved successfully', userId, labId, pointsAwarded: lab.points });
+    logger.info({ msg: 'Lab solved', userId: user.id, labId, pointsAwarded: lab.points });
 
-    // Check and award badges
-    const newBadges = await badgesService.checkAndAwardBadges(userId, labId);
+    const newBadges = await badgesService.checkAndAwardBadges(user.id);
+    const bonusPoints = newBadges.reduce((sum, b) => sum + (b.points ?? 0), 0);
 
-    // If user has an active instance for this lab, stop it gracefully
-    try {
-      const activeInstance = await prisma.labInstance.findFirst({
-        where: {
-          userId,
-          labId,
-          status: { in: ['STARTING', 'RUNNING'] },
-        },
-      });
-      if (activeInstance) {
-        await instancesService.stopLabInstance(userId, activeInstance.id, false);
-      }
-    } catch (e) {
-      logger.warn(`Could not auto-stop instance after solve: ${e.message}`);
-    }
+    const freshUser =
+      bonusPoints > 0
+        ? await prisma.user.findUnique({ where: { id: user.id }, select: { points: true } })
+        : updatedUser;
+
+    const solverCount = await prisma.solve.count({ where: { labId } });
 
     return {
       success: true,
       isCorrect: true,
-      message: '🎉 ยินดีด้วย! คุณพิชิต Lab นี้สำเร็จแล้ว',
+      code: 'SOLVED',
+      message: 'ยินดีด้วย! คุณพิชิตด่านนี้สำเร็จ',
       earnedPoints: lab.points,
-      totalPoints: updatedUser.points,
+      bonusPoints,
+      totalPoints: freshUser?.points ?? updatedUser.points,
+      solvedAt: solveRecord.solvedAt,
+      solverCount,
+      isFirstBlood: solverCount === 1,
       newBadges,
+      user: { id: user.id, username: user.username },
+      // The player's container is no longer needed. Detached from the response:
+      // stopping waits on Docker, and a player should see their reward at once.
+      _cleanup: async () => {
+        try {
+          const activeInstance = await prisma.labInstance.findFirst({
+            where: { userId: user.id, labId, status: { in: ['STARTING', 'RUNNING'] } },
+          });
+          if (!activeInstance) return;
+          await dockerService.stopAndRemoveContainer(activeInstance.containerId);
+          await prisma.labInstance.update({
+            where: { id: activeInstance.id },
+            data: { status: 'STOPPED', stoppedAt: new Date(), stopReason: 'SOLVED' },
+          });
+        } catch (e) {
+          logger.warn(`Could not auto-stop instance after solve: ${e.message}`);
+        }
+      },
     };
   }
 
   async getUserSolves(userId) {
     const solves = await prisma.solve.findMany({
       where: { userId },
-      include: {
-        lab: {
-          select: {
-            id: true,
-            title: true,
-            difficulty: true,
-            points: true,
-          },
-        },
+      select: {
+        solvedAt: true,
+        lab: { select: { id: true, title: true, difficulty: true, points: true, tags: true } },
       },
       orderBy: { solvedAt: 'desc' },
     });
@@ -120,6 +101,7 @@ class SolvesService {
       title: s.lab.title,
       difficulty: s.lab.difficulty,
       points: s.lab.points,
+      tags: s.lab.tags,
       solvedAt: s.solvedAt,
     }));
   }
