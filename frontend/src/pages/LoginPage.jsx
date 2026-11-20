@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader2, Lock, Mail, Terminal } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/format';
 import Logo from '../components/ui/Logo';
@@ -26,28 +26,13 @@ export function AuthSide({ title, description, bullets, footer }) {
       <ul className="mt-6 space-y-2.5">
         {bullets.map((b, i) => (
           <li key={b} className="flex items-start gap-2.5 text-[13px] text-ink-soft">
-            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md bg-acid/40 font-mono text-[10px] font-bold text-acid-ink">
+            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded bg-paper-soft text-[11px] font-semibold text-ink">
               {i + 1}
             </span>
             {b}
           </li>
         ))}
       </ul>
-
-      <div className="mt-8 overflow-hidden rounded-xl bg-night p-3.5 font-mono text-[11px] leading-relaxed text-night-text/70">
-        <div className="mb-1.5 flex items-center gap-1.5 text-night-text/40">
-          <Terminal className="h-3 w-3" />
-          <span>petbug — session</span>
-        </div>
-        <div className="text-night-text/85">
-          <span className="text-acid">$</span> open https://<span className="text-night-text">lab.petbug.io</span>
-        </div>
-        <div className="text-night-text/50">→ isolated container ready</div>
-        <div className="text-night-text/85">
-          <span className="text-acid">$</span> submit PETBUG{'{...}'}
-        </div>
-        <div className="text-[#9bd36b]">✓ +200 points · badge unlocked</div>
-      </div>
 
       {footer && <div className="mt-6 border-t border-paper-line pt-4 text-xs text-ink-muted">{footer}</div>}
     </div>

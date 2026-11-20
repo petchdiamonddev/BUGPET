@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, Command, BookOpen, Trophy, Award, User as UserIcon, ShieldCheck, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { cn, pointsLabel } from '../../lib/format';
+import { BRAND } from '../../config/brand';
 import Logo from './Logo';
 import { Avatar, StatusDot } from './Primitives';
 
@@ -117,9 +118,9 @@ export default function Navbar({ onOpenPalette }) {
   const { user, activeInstance } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-paper-line bg-paper/85 backdrop-blur-md supports-[backdrop-filter]:bg-paper/70">
+    <header className="sticky top-0 z-40 border-b border-paper-line bg-white">
       <div className="mx-auto flex h-14 w-full max-w-[1240px] items-center gap-3 px-4 sm:gap-5">
-        <Link to="/" className="shrink-0" aria-label="PETBUG หน้าหลัก">
+        <Link to="/" className="shrink-0" aria-label={`${BRAND.name} หน้าหลัก`}>
           <Logo />
         </Link>
 
@@ -139,7 +140,7 @@ export default function Navbar({ onOpenPalette }) {
                 <>
                   <Icon className="h-4 w-4" strokeWidth={2} />
                   {label}
-                  {isActive && <span className="absolute inset-x-2.5 -bottom-[9px] h-[2px] rounded-full bg-ink" />}
+                  {isActive && <span className="absolute inset-x-2.5 -bottom-[11px] h-[2px] bg-acid" />}
                 </>
               )}
             </NavLink>

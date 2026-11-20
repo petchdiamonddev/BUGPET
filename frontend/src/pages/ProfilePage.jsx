@@ -63,7 +63,7 @@ function SettingsForm() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader eyebrow="profile" title="ข้อมูลส่วนตัว" />
+        <CardHeader title="ข้อมูลส่วนตัว" />
         <form onSubmit={saveBio} className="space-y-3 p-4">
           <Field label="ชื่อผู้ใช้">
             <input value={user?.username ?? ''} disabled className="input bg-paper-soft font-mono text-xs text-ink-muted" />
@@ -90,7 +90,7 @@ function SettingsForm() {
       </Card>
 
       <Card>
-        <CardHeader eyebrow="security" title="เปลี่ยนรหัสผ่าน" />
+        <CardHeader title="เปลี่ยนรหัสผ่าน" />
         <form onSubmit={savePassword} className="grid gap-3 p-4 sm:grid-cols-3">
           <Field label="รหัสผ่านปัจจุบัน">
             <input
@@ -226,7 +226,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-4">
             <Card>
-              <CardHeader eyebrow="solves" title={`ประวัติการพิชิตด่าน (${profile.solves.length})`} />
+              <CardHeader title={`ประวัติการพิชิตด่าน (${profile.solves.length})`} />
               {profile.solves.length === 0 ? (
                 <EmptyState
                   icon={Target}
@@ -256,7 +256,7 @@ export default function ProfilePage() {
 
             {history.length > 0 && (
               <Card>
-                <CardHeader eyebrow="sessions" title="ไทม์ไลน์ container" description="ทุกครั้งที่คุณเปิด/ปิดด่าน" />
+                <CardHeader title="ไทม์ไลน์คอนเทนเนอร์" description="ทุกครั้งที่คุณเปิดหรือปิดด่าน" />
                 <ul className="divide-y divide-dashed divide-paper-line">
                   {history.slice(0, 8).map((h) => (
                     <li key={h.id} className="flex items-center gap-3 px-4 py-2.5">
@@ -286,7 +286,7 @@ export default function ProfilePage() {
 
           <aside className="space-y-4">
             <Card>
-              <CardHeader eyebrow="progress" title="ความคืบหน้ารวม" />
+              <CardHeader title="ความคืบหน้ารวม" />
               <div className="flex items-center gap-5 p-4">
                 <ProgressRing value={profile.completion} size={84} label={`${profile.completion}%`} />
                 <div className="flex-1 space-y-2">
@@ -304,7 +304,7 @@ export default function ProfilePage() {
             </Card>
 
             <Card>
-              <CardHeader eyebrow="badges" title={`เหรียญที่ครอบครอง (${profile.badges.length})`} />
+              <CardHeader title={`เหรียญที่ครอบครอง (${profile.badges.length})`} />
               {profile.badges.length === 0 ? (
                 <p className="px-4 py-6 text-center text-xs text-ink-faint">ยังไม่มีเหรียญ — พิชิตด่านแรกเพื่อเริ่มสะสม</p>
               ) : (

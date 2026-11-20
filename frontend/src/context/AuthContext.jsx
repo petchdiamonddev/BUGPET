@@ -39,7 +39,15 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       if (getToken()) {
-        await authApi.me().then((r) => setUser(r.data));
+        // A network error or an invalid token must not leave the app stuck on
+        // the full-screen loader: clear the session and show the public UI.
+        try {
+          const me = await authApi.me();
+          setUser(me.data);
+        } catch {
+          setToken(null);
+          setUser(null);
+        }
       } else {
         // No access token in storage — the HttpOnly session cookie may still
         // be valid (e.g. opened in a new tab), so try to restore silently.
@@ -52,7 +60,10 @@ export function AuthProvider({ children }) {
         }
       }
       await refreshActiveInstance();
+    } catch {
+      setUser(null);
     } finally {
+      // Always released, whatever happened above.
       setLoading(false);
     }
   }, [refreshActiveInstance]);

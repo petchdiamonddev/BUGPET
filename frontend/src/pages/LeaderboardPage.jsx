@@ -15,7 +15,7 @@ function PodiumCard({ entry, place, isMe }) {
     <Link
       to={`/players/${entry.id}`}
       className={cn(
-        'relative flex flex-col items-center gap-1 rounded-panel border px-3 py-4 transition-all hover:-translate-y-0.5 hover:shadow-lift',
+        'relative flex flex-col items-center gap-1 rounded-card border px-3 py-4 transition-colors hover:border-ink-faint',
         accent[place],
         heights[place],
         isMe && 'ring-1 ring-ink'
@@ -73,8 +73,7 @@ export default function LeaderboardPage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow mb-1">leaderboard</p>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">ตารางอันดับ</h1>
+          <h1 className="text-2xl font-semibold text-ink">ตารางอันดับ</h1>
           <p className="mt-0.5 text-[13px] text-ink-muted">
             {period === 'week' ? 'คะแนนที่ทำได้ใน 7 วันที่ผ่านมา' : 'คะแนนสะสมทั้งหมดจากด่านที่พิชิต'}
           </p>

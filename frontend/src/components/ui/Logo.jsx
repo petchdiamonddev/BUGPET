@@ -1,24 +1,45 @@
 import React from 'react';
+import { BRAND } from '../../config/brand';
 
 /**
- * App wordmark. Monogram glyph + wordmark + a small version tag; the glyph is
- * a stylized bug/terminal hybrid drawn inline so it stays crisp at any size.
+ * Brand mark.
+ *
+ * The image is loaded from `frontend/public/logo.svg` — replace that file to
+ * change the logo everywhere, no code change needed. The wordmark is rendered
+ * as text so it also works when the image is missing (`onError` falls back to
+ * the wordmark alone instead of a broken-image icon).
+ *
+ * Sizing: the image box is square; height 36px in the header reads well and
+ * stays sharp because the SVG scales. Pass `size` to override (e.g. 28 in the
+ * footer, 88 on the auth screen).
  */
-export default function Logo({ compact = false, className = '' }) {
+export default function Logo({ compact = false, size = 36, showTagline = true, className = '' }) {
+  const [imageOk, setImageOk] = React.useState(true);
+
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <span className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-[11px] bg-night shadow-[0_2px_0_#000]">
-        <svg viewBox="0 0 32 32" className="h-[22px] w-[22px]" fill="none" aria-hidden>
-          <path d="M9 11h14l-2.6 4.6H11.6L9 11Z" fill="#D5F24A" />
-          <path d="M12.4 16h7.2v3.4a3.6 3.6 0 0 1-7.2 0V16Z" fill="#D5F24A" />
-          <path d="M12.4 17.6H9.5m13 0h-2.9M12.4 20.4l-2.4 1.8m9.6-1.8 2.4 1.8" stroke="#16171A" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-        <span className="absolute right-1 top-1 h-1 w-1 rounded-full bg-ember" />
-      </span>
+      {imageOk && (
+        <img
+          src="/logo.svg"
+          alt={`${BRAND.name} logo`}
+          width={size}
+          height={size}
+          className="shrink-0 object-contain"
+          style={{ width: size, height: size }}
+          onError={() => setImageOk(false)}
+        />
+      )}
+
       {!compact && (
         <span className="flex flex-col leading-none">
-          <span className="font-display text-[17px] font-bold tracking-[-0.03em] text-ink">petbug</span>
-          <span className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-ink-faint">lab platform</span>
+          <span className="font-display text-[17px] font-bold tracking-[-0.03em] text-ink">
+            {BRAND.name}
+          </span>
+          {showTagline && (
+            <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-ink-faint">
+              {BRAND.tagline}
+            </span>
+          )}
         </span>
       )}
     </span>

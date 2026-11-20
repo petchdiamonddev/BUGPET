@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Sparkles, Activity, Trophy, BookOpen, Compass } from 'lucide-react';
+import { ArrowRight, Activity, Trophy, BookOpen, Compass } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useLabSession } from '../hooks/useLabSession';
@@ -17,11 +17,11 @@ function ActivityItem({ event }) {
     <li className="flex items-start gap-3 py-2.5">
       <span
         className={cn(
-          'mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg',
-          isSolve ? 'bg-moss-soft text-moss-deep' : 'bg-acid/30 text-acid-ink'
+          'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded',
+          isSolve ? 'bg-moss-soft text-moss-deep' : 'bg-paper-soft text-ink-soft'
         )}
       >
-        {isSolve ? <Trophy className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+        {isSolve ? <Trophy className="h-3.5 w-3.5" /> : <span className="text-[10px] font-semibold">B</span>}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] leading-snug text-ink-soft">
@@ -53,12 +53,12 @@ function ProgressTerminal({ progress, isStarting }) {
   return (
     <div className="text-center">
       {isStarting ? (
-        <span className="font-mono text-[11px] text-acid">booting</span>
+        <span className="text-[11px] text-ink-muted">กำลังเปิด</span>
       ) : (
         <>
-          <span className="num block font-mono text-[15px] font-semibold text-acid">{pct}%</span>
-          <div className="mx-auto mt-1 h-[3px] w-8 overflow-hidden rounded-full bg-night-text/15">
-            <div className="h-full rounded-full bg-acid transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
+          <span className="num block text-[15px] font-semibold text-ink">{pct}%</span>
+          <div className="mx-auto mt-1 h-[3px] w-8 overflow-hidden bg-paper-line">
+            <div className="h-full bg-acid transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
           </div>
         </>
       )}
@@ -72,26 +72,23 @@ function ContinueCard() {
   if (!activeInstance || pathname.startsWith('/labs/')) return null;
 
   return (
-    <Card className="overflow-hidden border-night bg-night text-night-text">
-      <div className="flex items-center justify-between gap-3 border-b border-night-line px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-acid" />
-          <span className="font-mono text-2xs uppercase tracking-[0.16em] text-night-text/60">lab session live</span>
-        </div>
-        <span className="num font-mono text-xs text-night-text/70">
-          {isStarting ? 'booting…' : `~${Math.max(1, Math.round(remainingMs / 60000))} min left`}
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-paper-line bg-paper-soft px-4 py-2.5">
+        <span className="text-xs font-medium text-ink-soft">ด่านที่เปิดอยู่</span>
+        <span className="num text-xs text-ink-muted">
+          {isStarting ? 'กำลังเตรียม' : `เหลือประมาณ ${Math.max(1, Math.round(remainingMs / 60000))} นาที`}
         </span>
       </div>
       <div className="flex items-center gap-4 p-4">
-        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-night-raised">
+        <div className="grid h-14 w-14 shrink-0 place-items-center border border-paper-line bg-paper-soft">
           <ProgressTerminal progress={progress} isStarting={isStarting} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-[15px] font-semibold text-white">{activeInstance.labTitle}</p>
-          <p className="truncate font-mono text-[11px] text-night-text/50">{activeInstance.url}</p>
+          <p className="truncate text-[15px] font-semibold text-ink">{activeInstance.labTitle}</p>
+          <p className="truncate font-mono text-[11px] text-ink-muted">{activeInstance.url}</p>
         </div>
-        <a href={activeInstance.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm bg-acid text-acid-ink hover:bg-acid-deep">
-          เปิด lab
+        <a href={activeInstance.url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-sm">
+          เปิดด่าน
           <ArrowRight className="h-3.5 w-3.5" />
         </a>
       </div>
@@ -156,7 +153,7 @@ export default function HomePage() {
           <section>
             <div className="mb-3 flex items-end justify-between">
               <div>
-                <h2 className="font-display text-lg font-semibold text-ink">
+                <h2 className="text-lg font-semibold text-ink">
                   {user ? 'ด่านถัดไปสำหรับคุณ' : 'ด่านยอดนิยม'}
                 </h2>
                 <p className="text-[13px] text-ink-muted">คัดตามระดับความยาก เริ่มจากง่ายก่อน</p>
@@ -192,7 +189,8 @@ export default function HomePage() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {showcase.map((lab, i) => (
-                  <LabCard key={lab.id} lab={lab} active={activeInstance?.labId === lab.id} index={i} />
+                  <LabCard key={lab.id} lab={lab} active={activeInstance?.labId === lab.id && activeInstance?.status === 'RUNNING'}
+                    starting={activeInstance?.labId === lab.id && activeInstance?.status === 'STARTING'} index={i} />
                 ))}
               </div>
             )}
@@ -204,7 +202,7 @@ export default function HomePage() {
                 <Compass className="h-5 w-5 text-ink-soft" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="eyebrow">recommended next</p>
+                <p className="text-xs text-ink-muted">ด่านที่ควรทำต่อ</p>
                 <p className="truncate text-sm font-semibold text-ink">{nextUp.title}</p>
                 <p className="text-xs text-ink-muted">
                   {nextUp.tags?.[0] ?? 'ด่านใหม่'} · {nextUp.timeoutMin} นาที · +{nextUp.points} คะแนน
@@ -221,7 +219,6 @@ export default function HomePage() {
             {/* Achievements preview */}
             <Card>
               <CardHeader
-                eyebrow="achievements"
                 title="เหรียญของคุณ"
                 action={
                   <Link to="/badges" className="text-xs font-medium text-ink-soft hover:text-ink">
@@ -246,7 +243,7 @@ export default function HomePage() {
 
             {/* Progress */}
             <Card>
-              <CardHeader eyebrow="progress" title="ความคืบหน้า" />
+              <CardHeader title="ความคืบหน้า" />
               <div className="flex items-center gap-5 p-4">
                 <ProgressRing
                   value={user ? profile?.completion ?? 0 : 0}
@@ -281,7 +278,6 @@ export default function HomePage() {
         <aside className="min-w-0 space-y-4">
           <Card className="overflow-hidden">
             <CardHeader
-              eyebrow="top hackers"
               title="ตารางอันดับ"
               action={
                 <Link to="/leaderboard" className="text-xs font-medium text-ink-soft hover:text-ink">
@@ -302,7 +298,7 @@ export default function HomePage() {
           </Card>
 
           <Card>
-            <CardHeader eyebrow="live feed" title="กำลังเกิดขึ้น" />
+            <CardHeader title="กำลังเกิดขึ้น" />
             {activity.length === 0 ? (
               <p className="px-4 py-6 text-center text-xs text-ink-faint">ยังไม่มีกิจกรรม</p>
             ) : (
@@ -314,11 +310,11 @@ export default function HomePage() {
             )}
           </Card>
 
-          <Card className="bg-acid/20 p-4">
-            <p className="eyebrow mb-1">quick start</p>
-            <p className="text-[13px] leading-relaxed text-ink-soft">
-              เปิดด่าน → กด <b className="text-ink">Start</b> → ระบบสร้าง container และลิงก์เฉพาะคุณภายในไม่กี่วินาที
-              จากนั้นใช้ Burp Suite หรือ DevTools สำรวจเป้าหมาย
+          <Card className="p-4">
+            <p className="mb-1 text-sm font-semibold text-ink">วิธีเริ่ม</p>
+            <p className="text-[13px] leading-relaxed text-ink-muted">
+              เปิดด่าน แล้วกด Start ระบบจะสร้างคอนเทนเนอร์และลิงก์ให้คุณคนเดียว
+              จากนั้นใช้ Burp Suite หรือ DevTools ตรวจเป้าหมาย
             </p>
             <Button size="sm" className="mt-3" onClick={() => (window.location.href = '/labs')}>
               <BookOpen className="h-3.5 w-3.5" />

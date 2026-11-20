@@ -46,12 +46,11 @@ export function useLabSession() {
       setBusy('starting');
       try {
         const res = await api.post(`/instances/start/${labId}`);
-        // Until the worker reports real container data (url/containerId), the
-        // instance is still "starting" — showing the live URL early would point
-        // at a container that does not exist yet.
-        setActiveInstance(
-          res.data && !res.data.containerId ? { ...res.data, status: 'STARTING' } : res.data
-        );
+        // The API status is authoritative. `containerId` is intentionally not
+        // exposed to ordinary users, so using its absence as a readiness check
+        // incorrectly turned an already-running (idempotent) start into
+        // STARTING and hid its link until the next poll.
+        setActiveInstance(res.data ?? null);
         return res;
       } finally {
         setBusy(null);

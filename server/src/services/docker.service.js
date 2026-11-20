@@ -1,4 +1,5 @@
 import fs from 'fs';
+import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { docker } from '../config/docker.js';
@@ -289,6 +290,96 @@ ${routers}  services:
       subdomain,
       url: `http://${domain}`,
     };
+  }
+
+  /**
+   * `container.start()` only means that Docker launched the process.  It does
+   * not mean the app inside the container (or its Traefik route) can accept a
+   * request yet.  Wait here, before exposing RUNNING to the client, so an
+   * eager click on “open lab” does not land on a temporary 502/connection
+   * error.
+   *
+   * Readiness is verified for real: an HTTP request is sent from the API into
+   * the lab container (`petbug-lab-<token>:<port>` on the shared network, or
+   * through Traefik when TRAEFIK_LAB_PROBE=true). A fixed warm-up delay made
+   * “open lab” land on a 502 for slow-starting images.
+   */
+  async waitForContainerReady(containerId, { timeoutMs = null, intervalMs = 800, port = null } = {}) {
+    const container = docker.getContainer(containerId);
+    const budget = Number(timeoutMs ?? process.env.LAB_READY_TIMEOUT_MS ?? 60_000);
+    const deadline = Date.now() + budget;
+
+    let info = await container.inspect().catch(() => null);
+    const subdomain = info?.Config?.Labels?.['petbug.subdomain'];
+    const targetPort =
+      port ??
+      Number(
+        info?.Config?.Labels?.[`traefik.http.services.lab-${subdomain}.loadbalancer.server.port`] ?? 80
+      );
+    const host = process.env.TRAEFIK_LAB_PROBE === 'true' ? `${subdomain}.${this.baseDomain}` : null;
+
+    // The Traefik router is registered before the container starts, but the
+    // proxy reloads asynchronously; give the first few attempts room to fail.
+    const startedAt = Date.now();
+    let lastError = 'no attempt made';
+
+    while (Date.now() < deadline) {
+      info = await container.inspect().catch(() => null);
+      if (!info) throw new Error('container disappeared while starting');
+      if (!info.State?.Running) {
+        lastError = `container stopped (${info.State?.Status})`;
+        throw new Error(`container exited before it became ready — ${lastError}`);
+      }
+
+      const health = info.State?.Health?.Status;
+      const probeOk =
+        health === 'healthy' ||
+        (health !== 'unhealthy' && (await this.probeTarget(subdomain, targetPort, host)));
+
+      if (probeOk) {
+        logger.info({ msg: 'Lab target answered a request', subdomain, port: targetPort, ms: Date.now() - startedAt });
+        return;
+      }
+      lastError = health === 'unhealthy' ? 'container healthcheck is failing' : 'target not accepting requests yet';
+
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    throw new Error(`target did not become ready in time (${lastError})`);
+  }
+
+  /** Single HTTP GET to the lab root; any HTTP status counts as "up". */
+  probeTarget(subdomain, port, hostHeader = null) {
+    return new Promise((resolve) => {
+      const targetHost = hostHeader ? process.env.TRAEFIK_HOST || 'traefik' : `petbug-lab-${subdomain}`;
+      const targetPort = hostHeader ? Number(process.env.TRAEFIK_HTTP_PORT || 80) : port;
+
+      const req = http.request(
+        {
+          host: targetHost,
+          port: targetPort,
+          path: '/',
+          method: 'GET',
+          timeout: 2500,
+          // Node rewrites Host for every request; keep the public subdomain so
+          // a target that vhosts on Host() still answers.
+          setHost: false,
+          headers: { host: hostHeader ?? `${subdomain}.${this.baseDomain}`, 'user-agent': 'petbug-readiness/1' },
+        },
+        (res) => {
+          // Drain the body so the socket is released immediately.
+          res.resume();
+          res.on('end', () => resolve(true));
+          res.on('error', () => resolve(true));
+        }
+      );
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(false);
+      });
+      req.on('error', () => resolve(false));
+      req.end();
+    });
   }
 
   async stopAndRemoveContainer(containerId, { attempts = 3 } = {}) {

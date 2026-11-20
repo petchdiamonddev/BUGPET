@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BRAND } from '../config/brand';
 import {
   Activity,
   Box,
@@ -349,7 +350,7 @@ function LabEditor({ open, initial, onClose, onSaved }) {
               value={form.flag}
               onChange={set('flag')}
               className={cn('input font-mono text-xs', errors.flag && 'input-error')}
-              placeholder="PETBUG{...}"
+              placeholder={`${BRAND.flagFormat}{...}`}
             />
           </Field>
           <Field label="คะแนน" required error={errors.points}>

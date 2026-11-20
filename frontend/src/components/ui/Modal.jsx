@@ -17,17 +17,20 @@ export function Modal({ open, onClose, title, eyebrow, description, children, fo
       if (e.key === 'Escape') onClose?.();
     };
     document.addEventListener('keydown', onKey);
-    const { overflow } = document.body.style;
+    // Lock scrolling without losing the current offset: `overflow: hidden` on
+    // <body> is enough, and it is always restored when the modal unmounts or
+    // the route changes, so the page can never stay frozen.
+    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const t = setTimeout(() => {
       const focusable = panelRef.current?.querySelector(
         'input:not([type="hidden"]), textarea, select, button[data-autofocus], [tabindex]:not([tabindex="-1"])'
       );
-      focusable?.focus?.();
+      focusable?.focus?.({ preventScroll: true });
     }, 30);
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = overflow;
+      document.body.style.overflow = previous;
       clearTimeout(t);
     };
   }, [open, onClose]);

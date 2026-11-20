@@ -16,7 +16,7 @@ import { useToast } from './Toast';
  */
 export default function LiveLabDock() {
   const { user } = useAuth();
-  const { activeInstance, isStarting, remainingMs, progress, poll } = useLabSession();
+  const { activeInstance, isStarting, remainingMs, progress, poll, now } = useLabSession();
   const [confirm, confirmDialog] = useConfirm();
   const [copied, setCopied] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -31,7 +31,7 @@ export default function LiveLabDock() {
 
   const urgency = urgencyOf(remainingMs);
   const urgencyStyles = {
-    normal: { text: 'text-night-text', bar: 'bg-acid', dot: 'moss' },
+    normal: { text: 'text-ink', bar: 'bg-acid', dot: 'moss' },
     warning: { text: 'text-[#ffc35c]', bar: 'bg-[#ffc35c]', dot: 'acid' },
     critical: { text: 'text-[#ff8a5c]', bar: 'bg-ember', dot: 'ember' },
     expired: { text: 'text-[#ff8a5c]', bar: 'bg-ember', dot: 'ember' },
@@ -76,14 +76,13 @@ export default function LiveLabDock() {
       >
         <div
           className={cn(
-            'pointer-events-auto w-full max-w-[560px] overflow-hidden rounded-panel border border-night-line bg-night text-night-text shadow-lift transition-all duration-300 ease-snap',
-            'animate-fade-up'
+            'pointer-events-auto w-full max-w-[520px] overflow-hidden rounded-card border border-paper-line bg-white text-ink shadow-lift'
           )}
         >
           {/* Time-pressure bar — drains as the clock runs out. */}
-          <div className="h-[3px] bg-night-raised">
+          <div className="h-[3px] bg-paper-line">
             {isStarting ? (
-              <div className="h-full w-1/3 animate-[shimmer_1.6s_infinite] bg-acid/60" />
+              <div className="h-full w-1/3 animate-[shimmer_1.6s_infinite] bg-acid" />
             ) : (
               <div
                 className={cn('h-full transition-[width] duration-1000 ease-linear', urgencyStyles.bar)}
@@ -98,7 +97,7 @@ export default function LiveLabDock() {
               className="flex min-w-0 flex-1 items-center gap-3 text-left"
               aria-label={minimized ? 'ขยายแถบ lab' : 'ย่อแถบ lab'}
             >
-              <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-night-raised">
+              <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded border border-paper-line bg-paper-soft">
                 {isStarting ? (
                   <Loader2 className="h-4 w-4 animate-spin text-acid" />
                 ) : (
@@ -112,12 +111,20 @@ export default function LiveLabDock() {
               </span>
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5">
-                  <span className="truncate text-[13px] font-semibold text-white">{activeInstance.labTitle}</span>
+                  <span className="truncate text-[13px] font-semibold text-ink">{activeInstance.labTitle}</span>
                   <ChevronDown className={cn('h-3 w-3 shrink-0 text-night-text/50 transition-transform', minimized && 'rotate-180')} />
                 </span>
-                <span className="flex items-center gap-1.5 font-mono text-[11px] text-night-text/60">
+                <span className="flex items-center gap-1.5 text-[11px] text-ink-muted">
                   {isStarting ? (
-                    'กำลังสร้าง container…'
+                    <>
+                      <span>กำลังเตรียม</span>
+                      <span className="num font-semibold tabular-nums text-[#ffc35c]">
+                        {activeInstance?.startedAt
+                          ? `${Math.max(0, Math.round((now - new Date(activeInstance.startedAt).getTime()) / 1000))}s`
+                          : '…'}
+                      </span>
+                      <span className="text-night-text/35">· ยังไม่ต้องเปิดลิงก์</span>
+                    </>
                   ) : (
                     <>
                       <span>remaining</span>
@@ -135,7 +142,7 @@ export default function LiveLabDock() {
                 <>
                   <button
                     onClick={copy}
-                    className="hidden h-8 w-8 place-items-center rounded-lg text-night-text/70 transition-colors hover:bg-night-raised hover:text-white sm:grid"
+                    className="hidden h-8 w-8 place-items-center rounded text-ink-muted transition-colors hover:bg-paper-soft hover:text-ink sm:grid"
                     aria-label="คัดลอกลิงก์"
                     title="คัดลอกลิงก์"
                   >
@@ -145,7 +152,7 @@ export default function LiveLabDock() {
                     href={activeInstance.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn btn-sm bg-acid text-acid-ink hover:bg-acid-deep"
+                    className="btn-primary btn-sm"
                   >
                     เปิด lab
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -154,14 +161,14 @@ export default function LiveLabDock() {
               )}
               <Link
                 to={`/labs/${activeInstance.labId}`}
-                className="hidden rounded-lg px-2 py-1.5 text-xs font-medium text-night-text/70 transition-colors hover:bg-night-raised hover:text-white lg:block"
+                className="hidden rounded px-2 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-paper-soft hover:text-ink lg:block"
               >
                 รายละเอียด
               </Link>
               <button
                 onClick={stop}
                 disabled={stopping}
-                className="grid h-8 w-8 place-items-center rounded-lg text-night-text/50 transition-colors hover:bg-ember/15 hover:text-ember disabled:opacity-40"
+                className="grid h-8 w-8 place-items-center rounded text-ink-faint transition-colors hover:bg-ember-soft hover:text-ember disabled:opacity-40"
                 aria-label="หยุดด่าน"
                 title="หยุดด่าน"
               >
@@ -171,18 +178,18 @@ export default function LiveLabDock() {
           </div>
 
           {!minimized && !isStarting && (
-            <div className="flex items-center gap-2 border-t border-night-line/70 px-3 py-2">
-              <span className="font-mono text-[10px] text-night-text/40">target</span>
+            <div className="flex items-center gap-2 border-t border-paper-line px-3 py-2">
+              <span className="text-[11px] text-ink-faint">ลิงก์</span>
               <a
                 href={activeInstance.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-w-0 flex-1 truncate font-mono text-[11px] text-night-text/80 hover:text-acid hover:underline"
+                className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-muted hover:text-acid hover:underline"
               >
                 {activeInstance.url}
               </a>
               {activeInstance.lab?.difficulty && (
-                <span className="font-mono text-[10px] text-night-text/40">
+                <span className="text-[11px] text-ink-faint">
                   {DIFFICULTY[activeInstance.lab.difficulty]?.label}
                 </span>
               )}

@@ -209,8 +209,7 @@ export default function LabsPage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow mb-1">lab catalog</p>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">ด่านทดสอบ</h1>
+          <h1 className="text-2xl font-semibold text-ink">ด่านทดสอบ</h1>
           <p className="mt-0.5 text-[13px] text-ink-muted">
             ทุกด่านรันแบบแยกคอนเทนเนอร์ (1 คน = 1 container) — เปิดแล้วเจาะได้ทันที
           </p>
@@ -260,7 +259,8 @@ export default function LabsPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {labs.map((lab, i) => (
-            <LabCard key={lab.id} lab={lab} active={activeInstance?.labId === lab.id} index={i} />
+            <LabCard key={lab.id} lab={lab} active={activeInstance?.labId === lab.id && activeInstance?.status === 'RUNNING'}
+                    starting={activeInstance?.labId === lab.id && activeInstance?.status === 'STARTING'} index={i} />
           ))}
         </div>
       )}

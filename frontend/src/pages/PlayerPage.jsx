@@ -90,7 +90,7 @@ export default function PlayerPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
         <Card>
-          <CardHeader eyebrow="history" title={`ด่านที่พิชิตแล้ว (${profile.totalSolves})`} />
+          <CardHeader title={`ด่านที่พิชิตแล้ว (${profile.totalSolves})`} />
           {profile.solves.length === 0 ? (
             <EmptyState icon={Target} title="ยังไม่เคยส่ง flag" description="ผู้เล่นคนนี้ยังไม่ได้ผ่านด่านใด" />
           ) : (
@@ -111,7 +111,7 @@ export default function PlayerPage() {
 
         <aside className="space-y-4">
           <Card>
-            <CardHeader eyebrow="rank" title={profile.rank ? `อันดับ #${profile.rank}` : 'ยังไม่มีอันดับ'} />
+            <CardHeader title={profile.rank ? `อันดับ #${profile.rank}` : 'ยังไม่มีอันดับ'} />
             <div className="space-y-2.5 p-4 text-[13px]">
               {Object.entries(profile.byDifficulty).map(([key, count]) => (
                 <div key={key}>
@@ -133,7 +133,7 @@ export default function PlayerPage() {
           </Card>
 
           <Card>
-            <CardHeader eyebrow="badges" title={`เหรียญ (${profile.badges.length})`} />
+            <CardHeader title={`เหรียญ (${profile.badges.length})`} />
             {profile.badges.length === 0 ? (
               <div className="p-4 text-center text-xs text-ink-faint">
                 <Award className="mx-auto mb-1 h-5 w-5 opacity-40" />

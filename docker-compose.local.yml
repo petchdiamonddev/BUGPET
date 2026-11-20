@@ -83,6 +83,10 @@ services:
       # gid of /var/run/docker.sock on the host (default 0 = root group).
       DOCKER_GID: "${DOCKER_GID:-0}"
       SEED_ON_START: ${SEED_ON_START:-true}
+      # Readiness gate: the API reports RUNNING only after the target answers
+      # a request (never before).
+      TRAEFIK_LAB_PROBE: ${TRAEFIK_LAB_PROBE:-false}
+      LAB_READY_TIMEOUT_MS: ${LAB_READY_TIMEOUT_MS:-60000}
       LOG_LEVEL: info
     # Join the docker socket's group so the non-root `node` user can use it.
     group_add:

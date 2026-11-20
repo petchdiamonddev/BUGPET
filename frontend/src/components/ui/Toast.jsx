@@ -9,7 +9,7 @@ const TONE = {
   success: { bar: 'bg-moss', icon: 'text-moss' },
   error: { bar: 'bg-ember', icon: 'text-ember-deep' },
   info: { bar: 'bg-ink', icon: 'text-ink' },
-  reward: { bar: 'bg-acid-deep', icon: 'text-acid-ink' },
+  reward: { bar: 'bg-acid', icon: 'text-acid' },
 };
 
 function ToastItem({ toast, onDismiss }) {

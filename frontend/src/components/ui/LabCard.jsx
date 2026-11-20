@@ -15,14 +15,14 @@ const ACCENT = {
  * row, the title, a clamped description, tags and a footer with stats. Solved
  * labs get a stamped look rather than a green pill.
  */
-export default function LabCard({ lab, active = false, index = 0 }) {
+export default function LabCard({ lab, active = false, starting = false, index = 0 }) {
   const solved = lab.isSolved;
 
   return (
     <article
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-card border border-paper-line bg-paper-raised shadow-card transition-all duration-200 ease-snap hover:-translate-y-[2px] hover:border-ink-faint hover:shadow-lift',
-        active && 'border-moss/40 ring-1 ring-moss/25',
+        'group relative flex flex-col overflow-hidden rounded-card border border-paper-line bg-white transition-colors duration-150 hover:border-ink-faint',
+        (active || starting) && 'border-moss/40 ring-1 ring-moss/25',
         solved && 'bg-paper-soft/60'
       )}
       style={{ animation: `fade-up .4s ${Math.min(index, 8) * 35}ms cubic-bezier(.2,.7,.3,1) both` }}
@@ -39,13 +39,19 @@ export default function LabCard({ lab, active = false, index = 0 }) {
                 กำลังรัน
               </span>
             )}
+            {starting && !active && (
+              <span className="chip border-[#e2c822]/40 bg-[#fff8d9] text-[#7a6408]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#c9a70f]" />
+                กำลังเตรียม
+              </span>
+            )}
           </div>
           <span className={cn('num font-mono text-sm font-semibold', solved ? 'text-ink-faint line-through' : 'text-ink')}>
             +{lab.points}
           </span>
         </div>
 
-        <h3 className="font-display text-[15px] font-semibold leading-snug text-ink">
+        <h3 className="text-[15px] font-semibold leading-snug text-ink">
           {/* The card itself is clickable via the stretched overlay, but the
               visible link needs a focusable hit area of its own for keyboard. */}
           <Link
@@ -82,7 +88,7 @@ export default function LabCard({ lab, active = false, index = 0 }) {
         </span>
 
         {solved ? (
-          <span className="inline-flex rotate-[-3deg] items-center gap-1 rounded border border-moss/40 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-moss">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-moss">
             <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3">
               <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

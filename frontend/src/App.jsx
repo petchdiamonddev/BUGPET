@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 import Navbar from './components/ui/Navbar';
@@ -8,6 +8,7 @@ import LiveLabDock from './components/ui/LiveLabDock';
 import { CommandPalette, useCommandShortcut } from './components/ui/CommandPalette';
 import Logo from './components/ui/Logo';
 import { Spinner } from './components/ui/Primitives';
+import { BRAND } from './config/brand';
 
 import HomePage from './pages/HomePage';
 import LabsPage from './pages/LabsPage';
@@ -43,32 +44,86 @@ function RequireAuth({ children, admin = false }) {
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    // Use the simple overload: some mobile browsers reject the non-standard
+    // `instant` behavior and leave the page in an inconsistent scroll state.
+    window.scrollTo(0, 0);
   }, [pathname]);
   return null;
 }
 
 function Footer() {
+  const { user, isAdmin } = useAuth();
+  const year = new Date().getFullYear();
+  // Ink-based colours: the footer sits on the light paper surface, so a faint
+  // grey-on-white link would fall below readable contrast.
+  const link = 'w-fit rounded-sm text-[13px] text-ink-soft transition-colors hover:text-ink hover:underline underline-offset-2';
+
   return (
-    <footer className="mt-10 border-t border-paper-line bg-paper-soft/60">
-      <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-3 px-4 py-6 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Logo compact />
-          <span>
-            © 2026 PETBUG · แพลตฟอร์มฝึกความปลอดภัยเว็บ
-          </span>
+    <footer className="mt-12 border-t border-paper-line bg-paper-soft/70">
+      <div className="mx-auto w-full max-w-[1240px] px-4 py-10">
+        <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr_1fr_1.2fr]">
+          {/* brand */}
+          <div className="max-w-sm">
+            <div className="flex items-center gap-2.5">
+              <Logo size={32} />
+            </div>
+            <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
+              ห้องแล็บฝึกความปลอดภัยเว็บ ที่ทุกด่านรันในคอนเทนเนอร์แยกเฉพาะคุณ — ใช้เพื่อการเรียนรู้อย่างรับผิดชอบเท่านั้น
+            </p>
+          </div>
+
+          {/* explore */}
+          <nav aria-label="เมนูท้ายหน้า: สำรวจ" className="grid content-start gap-2.5">
+            <p className="eyebrow">สำรวจ</p>
+            <Link to="/labs" className={link}>ด่านทดสอบ</Link>
+            <Link to="/leaderboard" className={link}>ตารางอันดับ</Link>
+            <Link to="/badges" className={link}>เหรียญรางวัล</Link>
+          </nav>
+
+          {/* account */}
+          <nav aria-label="เมนูท้ายหน้า: บัญชี" className="grid content-start gap-2.5">
+            <p className="eyebrow">บัญชี</p>
+            {user ? (
+              <>
+                <Link to="/profile" className={link}>โปรไฟล์ของฉัน</Link>
+                <Link to="/profile?tab=settings" className={link}>ตั้งค่าบัญชี</Link>
+                {isAdmin && <Link to="/admin" className={link}>แผงควบคุม</Link>}
+              </>
+            ) : (
+              <>
+                <Link to="/login" className={link}>เข้าสู่ระบบ</Link>
+                <Link to="/register" className={link}>สร้างบัญชีฟรี</Link>
+                <Link to="/labs" className={link}>ดูด่านทั้งหมด</Link>
+              </>
+            )}
+          </nav>
+
+          {/* system + contact */}
+          <div className="grid content-start gap-2.5">
+            <p className="eyebrow">ระบบและติดต่อ</p>
+            <a
+              href="/api/health"
+              target="_blank"
+              rel="noreferrer"
+              className={`${link} -my-1 inline-flex min-h-[28px] items-center py-1`}
+            >
+              สถานะระบบ
+              <span className="ml-1.5 font-mono text-[10px] text-ink-faint">↗</span>
+            </a>
+            <a href="mailto:tanawat29664@gmail.com" className={link}>tanawat29664@gmail.com</a>
+            <p className="text-[12px] leading-relaxed text-ink-faint">
+              แจ้งปัญหาด่านหรือขอสิทธิ์ผู้ดูแลระบบผ่านอีเมลนี้
+            </p>
+          </div>
         </div>
-        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span className="font-mono text-[11px] text-ink-faint">traefik · docker · bullmq · prisma</span>
-          <a
-            href="/api/health"
-            target="_blank"
-            rel="noreferrer"
-            className="-my-1 inline-flex min-h-[28px] items-center py-1 link-underline"
-          >
-            สถานะระบบ
-          </a>
-        </nav>
+
+        <div className="mt-9 flex flex-col gap-2 border-t border-paper-line pt-5 text-[11px] text-ink-faint sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {year} {BRAND.name} — พัฒนาเพื่อการศึกษา ·{' '}
+            <span className="text-ink-muted">ห้ามโจมตีระบบนอกขอบเขตห้องแล็บ</span>
+          </p>
+          <p className="text-[11px] text-ink-faint">Traefik · Docker · BullMQ · Prisma</p>
+        </div>
       </div>
     </footer>
   );

@@ -153,7 +153,7 @@ export function ProgressRing({ value = 0, size = 64, stroke = 6, label, classNam
   return (
     <div className={cn('relative inline-flex items-center justify-center', className)} style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#e2ded3" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#d7dde5" strokeWidth={stroke} />
         <circle
           cx={size / 2}
           cy={size / 2}

@@ -4,38 +4,37 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Paper & ink: warm neutrals instead of blue-grey slate.
         paper: {
-          DEFAULT: '#f4f2ec',
-          soft: '#efede6',
-          raised: '#fbfaf7',
-          line: '#e2ded3',
-          strong: '#d5cfc1',
+          DEFAULT: '#eef1f4',
+          soft: '#e6eaef',
+          raised: '#ffffff',
+          line: '#d7dde5',
+          strong: '#c3cbd6',
         },
         ink: {
-          DEFAULT: '#191818',
-          soft: '#3c3a37',
-          muted: '#6f6a62',
-          faint: '#9a948a',
+          DEFAULT: '#1b212b',
+          soft: '#2e3642',
+          muted: '#5c6775',
+          faint: '#8b95a3',
         },
         acid: {
-          DEFAULT: '#d5f24a',
-          deep: '#b9d92f',
-          ink: '#1c2408',
+          DEFAULT: '#1f4e8c',
+          deep: '#173b6a',
+          ink: '#ffffff',
         },
         ember: {
-          DEFAULT: '#ff5c2b',
-          soft: '#ffe9e1',
-          deep: '#c93c0f',
+          DEFAULT: '#c2410c',
+          soft: '#fde8df',
+          deep: '#9a3412',
         },
         moss: {
-          DEFAULT: '#2f7a58',
-          soft: '#e3f1e9',
-          deep: '#1f573d',
+          DEFAULT: '#1f7a4d',
+          soft: '#e5f3eb',
+          deep: '#145c38',
         },
         plum: {
-          DEFAULT: '#6b4ee6',
-          soft: '#ece7ff',
+          DEFAULT: '#5b4b8a',
+          soft: '#eeeaf6',
         },
         // Terminal surfaces for lab consoles & code-ish blocks.
         night: {
@@ -48,19 +47,19 @@ export default {
       },
       fontFamily: {
         sans: ['"IBM Plex Sans Thai"', 'Inter', 'system-ui', 'sans-serif'],
-        display: ['"Anuphan"', '"IBM Plex Sans Thai"', 'system-ui', 'sans-serif'],
+        display: ['"IBM Plex Sans Thai"', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
       },
       borderRadius: {
-        card: '14px',
-        panel: '18px',
+        card: '6px',
+        panel: '6px',
       },
       boxShadow: {
-        card: '0 1px 0 rgba(25, 24, 24, 0.04), 0 8px 24px -18px rgba(25, 24, 24, 0.35)',
-        lift: '0 2px 0 rgba(25, 24, 24, 0.05), 0 22px 40px -28px rgba(25, 24, 24, 0.55)',
+        card: 'none',
+        lift: '0 8px 24px rgba(20, 28, 40, 0.12)',
         inset: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
       },
       keyframes: {

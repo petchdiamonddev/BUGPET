@@ -141,6 +141,13 @@ class LabsService {
       where: { labId, status: { in: ['RUNNING', 'STOPPED'] } },
     });
 
+    // A solve and the instance that produced it are separate records, and old
+    // instances may be pruned, so a plain solves/instances ratio can exceed
+    // 100% (it showed 200% before). Clamp, and treat "more solvers than
+    // recorded attempts" as a completed attempt too.
+    const solvesCount = lab._count.solves;
+    const attempts = Math.max(totalInstances, solvesCount);
+
     return {
       ...serializeLab(lab, { userId }),
       activeInstance: serializeInstance(activeInstance),
@@ -148,8 +155,8 @@ class LabsService {
       firstBlood: firstSolve
         ? { username: firstSolve.user.username, solvedAt: firstSolve.solvedAt, userId: firstSolve.user.id }
         : null,
-      attemptsCount: lab._count.instances,
-      successRate: totalInstances > 0 ? Math.round((lab._count.solves / totalInstances) * 100) : null,
+      attemptsCount: attempts,
+      successRate: attempts > 0 ? Math.min(100, Math.round((solvesCount / attempts) * 100)) : null,
     };
   }
 

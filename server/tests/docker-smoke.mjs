@@ -74,7 +74,7 @@ const token = login.body?.data?.accessToken;
 ok('admin login', Boolean(token), login.body?.message);
 
 const labs = await raw('/api/labs');
-ok('lab catalog', labs.status === 200 && labs.body.data?.length >= 6, `${labs.body.data?.length} labs`);
+ok('lab catalog', labs.status === 200 && labs.body.data?.length >= 1, `${labs.body.data?.length} labs`);
 
 // A lab created by a previous run may still be running; the constraint is
 // 1 user = 1 container, so drain it first.

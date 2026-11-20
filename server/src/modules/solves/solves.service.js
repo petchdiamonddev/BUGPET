@@ -4,6 +4,22 @@ import { dockerService } from '../../services/docker.service.js';
 import { logger } from '../../config/logger.js';
 import { badRequest, notFound } from '../../utils/errors.js';
 
+/**
+ * Flag wrapper accepted by the platform, e.g. BUGPET{...}.
+ * The brand was renamed from PETBUG, so flags authored under the old name
+ * still resolve — players should not lose a solve because of a rebrand.
+ */
+const FLAG_FORMAT = process.env.FLAG_FORMAT || 'BUGPET';
+const LEGACY_FLAG_FORMATS = (process.env.LEGACY_FLAG_FORMATS || 'PETBUG')
+  .split(',')
+  .map((f) => f.trim().toUpperCase())
+  .filter(Boolean);
+
+const flagBody = (value) => {
+  const match = /^([A-Za-z0-9_-]+)\{(.*)\}$/s.exec(value ?? '');
+  return match ? { format: match[1].toUpperCase(), body: match[2] } : null;
+};
+
 class SolvesService {
   /**
    * Validates a submitted flag. Wrong flags are a normal outcome (400 with
@@ -22,7 +38,22 @@ class SolvesService {
       throw badRequest('คุณเคยพิชิตด่านนี้ไปแล้ว', 'ALREADY_SOLVED', { solvedAt: existingSolve.solvedAt });
     }
 
-    const isCorrect = submittedFlag.trim() === lab.flag.trim();
+    // Accept the stored flag verbatim, or the same inner value wrapped in the
+    // current brand format (and legacy formats, e.g. PETBUG{...}).
+    const submitted = submittedFlag.trim();
+    const submittedParts = flagBody(submitted);
+    const storedParts = flagBody(lab.flag.trim());
+    const acceptedFormats = [FLAG_FORMAT, ...LEGACY_FLAG_FORMATS].map((f) => f.toUpperCase());
+
+    const isCorrect =
+      submitted === lab.flag.trim() ||
+      Boolean(
+        storedParts &&
+          submittedParts &&
+          submittedParts.body === storedParts.body &&
+          acceptedFormats.includes(submittedParts.format)
+      );
+
     if (!isCorrect) {
       return {
         success: false,

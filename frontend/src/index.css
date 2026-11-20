@@ -6,16 +6,15 @@
 /* Design tokens                                                       */
 /* ------------------------------------------------------------------ */
 :root {
-  --paper: #f4f2ec;
-  --paper-line: #e2ded3;
-  --ink: #191818;
-  --ink-muted: #6f6a62;
-  --acid: #d5f24a;
-  --acid-ink: #1c2408;
-  --ember: #ff5c2b;
-  --moss: #2f7a58;
-  --night: #16171a;
-  --grid-dot: rgba(25, 24, 24, 0.085);
+  --paper: #eef1f4;
+  --paper-line: #d7dde5;
+  --ink: #1b212b;
+  --ink-muted: #5c6775;
+  --acid: #1f4e8c;
+  --acid-ink: #ffffff;
+  --ember: #c2410c;
+  --moss: #1f7a4d;
+  --night: #1b212b;
 }
 
 @layer base {
@@ -25,29 +24,29 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-y: scroll;
+  }
+
+  #root {
+    min-height: 100%;
   }
 
   body {
     @apply bg-paper text-ink font-sans antialiased;
     font-size: 14px;
     line-height: 1.55;
-    /* Dotted engineering-paper grid — subtle texture instead of a gradient blob. */
-    background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
-    background-size: 22px 22px;
-    background-position: -11px -11px;
   }
 
   ::selection {
-    background: var(--acid);
-    color: var(--acid-ink);
+    background: #d5e3f5;
+    color: var(--ink);
   }
 
   h1,
   h2,
   h3,
   h4 {
-    @apply font-display tracking-tight;
-    font-feature-settings: 'ss01' on;
+    @apply font-sans;
   }
 
   /* Number columns line up; tabular figures everywhere numbers matter. */
@@ -65,19 +64,19 @@
   /* A slimmer, neutral scrollbar that matches the paper theme. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #c9c3b6 transparent;
+    scrollbar-color: #c3cbd6 transparent;
   }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: #cfc9bc;
+    background: #c3cbd6;
     border: 3px solid var(--paper);
     border-radius: 999px;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: #b8b1a2;
+    background: #a8b2c0;
   }
 }
 
@@ -88,7 +87,7 @@
   /* Card: hairline border + very soft shadow. The slight offset shadow under
      the top edge gives the "printed sheet" feel without a generic drop. */
   .card {
-    @apply relative rounded-card border border-paper-line bg-paper-raised shadow-card;
+    @apply relative rounded-card border border-paper-line bg-paper-raised;
   }
 
   .card-flat {
@@ -96,7 +95,7 @@
   }
 
   .eyebrow {
-    @apply font-mono text-2xs font-medium uppercase tracking-[0.18em] text-ink-muted;
+    @apply text-xs font-medium text-ink-muted;
   }
 
   .label {
@@ -104,9 +103,9 @@
   }
 
   .input {
-    @apply w-full rounded-xl border border-paper-strong bg-paper-raised px-3 py-2 text-sm text-ink
+    @apply w-full rounded-md border border-paper-strong bg-paper-raised px-3 py-2 text-sm text-ink
       placeholder:text-ink-faint transition-colors duration-150
-      hover:border-ink-faint focus:border-ink focus:outline-none focus:ring-[3px] focus:ring-ink/10;
+      hover:border-ink-faint focus:border-acid focus:outline-none focus:ring-2 focus:ring-acid/20;
   }
 
   .input-error {
@@ -119,30 +118,24 @@
     background-position: right 0.65rem center;
   }
 
-  /* Buttons: square-ish, confident, with an offset "plate" shadow that
-     presses down on click. */
   .btn {
-    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl
-      px-3.5 py-2 text-sm font-semibold transition-all duration-150 ease-snap
+    @apply inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md
+      px-3.5 py-2 text-sm font-medium transition-colors duration-150
       disabled:cursor-not-allowed disabled:opacity-45;
   }
 
-  .btn:active:not(:disabled) {
-    transform: translateY(1px);
-  }
-
   .btn-primary {
-    @apply btn bg-ink text-paper-raised shadow-[0_2px_0_#000];
+    @apply btn bg-acid text-acid-ink shadow-[0_2px_0_#8aa61a];
   }
   .btn-primary:hover:not(:disabled) {
-    @apply bg-ink-soft;
+    @apply bg-acid-deep;
   }
 
   .btn-accent {
-    @apply btn bg-acid text-acid-ink shadow-[0_2px_0_#8aa61a];
+    @apply btn bg-ink text-white;
   }
   .btn-accent:hover:not(:disabled) {
-    @apply bg-acid-deep;
+    @apply bg-ink-soft;
   }
 
   .btn-ghost {
@@ -154,7 +147,7 @@
   }
 
   .btn-danger {
-    @apply btn bg-ember text-white shadow-[0_2px_0_#a82f0a] hover:bg-ember-deep;
+    @apply btn bg-ember text-white hover:bg-ember-deep;
   }
 
   .btn-sm {
@@ -165,13 +158,13 @@
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-2xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium;
   }
   .chip-neutral {
     @apply chip border-paper-strong bg-paper-soft text-ink-muted;
   }
   .chip-acid {
-    @apply chip border-acid-deep/60 bg-acid/35 text-acid-ink;
+    @apply chip border-[#b7cbe6] bg-[#e7f0fa] text-[#173b6a];
   }
   .chip-moss {
     @apply chip border-moss/25 bg-moss-soft text-moss-deep;
@@ -185,7 +178,7 @@
 
   .kbd {
     @apply inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-paper-strong
-      bg-paper-raised px-1 font-mono text-[10px] font-medium text-ink-muted shadow-[0_1px_0_#d5cfc1];
+      bg-paper-soft px-1 font-mono text-[10px] font-medium text-ink-muted;
   }
 
   /* Terminal panel used for lab consoles / flag submission. */

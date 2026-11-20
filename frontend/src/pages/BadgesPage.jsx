@@ -12,7 +12,7 @@ export function BadgeCard({ badge, earned, earnedAt }) {
     <div
       className={cn(
         'group relative flex flex-col gap-2 rounded-card border p-3 transition-all',
-        earned ? 'border-paper-line bg-paper-raised hover:-translate-y-0.5 hover:shadow-card' : 'border-dashed border-paper-strong bg-paper-soft/50'
+        earned ? 'border-paper-line bg-white hover:border-ink-faint' : 'border-dashed border-paper-strong bg-paper-soft/50'
       )}
     >
       <div className="flex items-start justify-between">
@@ -78,8 +78,7 @@ export default function BadgesPage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow mb-1">achievements</p>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">เหรียญรางวัล</h1>
+          <h1 className="text-2xl font-semibold text-ink">เหรียญรางวัล</h1>
           <p className="mt-0.5 text-[13px] text-ink-muted">เก็บเหรียญจากการพิชิตด่าน และรับคะแนนโบนัสเพิ่มเมื่อปลดล็อก</p>
         </div>
         {user && (

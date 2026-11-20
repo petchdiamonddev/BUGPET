@@ -26,12 +26,18 @@ async function handleStartLab({ instanceId }) {
     return;
   }
 
+  let containerId = null;
   try {
-    const { containerId } = await dockerService.createLabContainer({
+    ({ containerId } = await dockerService.createLabContainer({
       subdomain: instance.subdomain,
       dockerImage: instance.lab.dockerImage,
       flag: instance.lab.flag,
-    });
+    }));
+
+    // Do not announce RUNNING until the target process and route have had a
+    // chance to come up. This avoids handing the player a URL that still
+    // returns a startup error.
+    await dockerService.waitForContainerReady(containerId);
 
     // Re-check after the (potentially slow) image pull: if it was cancelled in
     // the meantime, tear the container down again instead of leaking it.
@@ -54,6 +60,13 @@ async function handleStartLab({ instanceId }) {
     logger.info({ msg: 'Lab started successfully', instanceId, containerId, timeoutMin: instance.lab.timeoutMin });
   } catch (err) {
     logger.error({ msg: `Failed to start lab instance ${instanceId}`, error: err.message });
+    // A readiness failure happens after Docker has already created the
+    // container. Remove it (and its route) so a retry starts cleanly.
+    if (containerId) {
+      await dockerService.stopAndRemoveContainer(containerId).catch((cleanupError) =>
+        logger.warn({ msg: 'Could not clean up failed lab container', instanceId, error: cleanupError.message })
+      );
+    }
     await prisma.labInstance.update({
       where: { id: instanceId },
       data: { status: 'ERROR', error: err.message, stoppedAt: new Date(), stopReason: 'START_FAILED' },
