@@ -8,14 +8,17 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
-app.use('/api/auth', authRoutes);
-
+// Health check
 app.get('/', (req, res) => {
-  res.send('Hello World');
+  res.json({ status: 'ok', message: 'BUGPET API is running' });
 });
 
+// Routes
+app.use('/api/auth', authRoutes);
+
+// 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ message: "Page NotFound 404" });
+  res.status(404).json({ success: false, message: '404 Not Found' });
 });
 
 export default app;

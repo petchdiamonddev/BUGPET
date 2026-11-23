@@ -1,5 +1,15 @@
 import authService from './auth.service.js';
 
+const REFRESH_COOKIE_NAME = 'refreshToken';
+
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 วัน
+});
+
 class AuthController {
   async register(req, res) {
     try {
@@ -11,7 +21,7 @@ class AuthController {
         data: newUser,
       });
     } catch (error) {
-      return res.status(400).json({
+      return res.status(error.statusCode || 400).json({
         success: false,
         message: error.message,
       });
@@ -27,13 +37,8 @@ class AuthController {
         password,
       });
 
-      // ตั้งค่า HttpOnly Cookie สำหรับ Refresh Token เพื่อความปลอดภัย
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV,
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 วัน
-      });
+      // ตั้งค่า HttpOnly Cookie สำหรับ Refresh Token
+      res.cookie(REFRESH_COOKIE_NAME, refreshToken, getCookieOptions());
 
       return res.status(200).json({
         success: true,
@@ -44,7 +49,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      return res.status(400).json({
+      return res.status(error.statusCode || 401).json({
         success: false,
         message: error.message,
       });
@@ -53,15 +58,26 @@ class AuthController {
 
   async refreshToken(req, res) {
     try {
-      const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+      const refreshToken =
+        req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
+
       const result = await authService.refreshToken(refreshToken);
+
+      // ออก Refresh Token ใบใหม่ (Refresh Token Rotation)
+      res.cookie(REFRESH_COOKIE_NAME, result.refreshToken, getCookieOptions());
+
       return res.status(200).json({
         success: true,
-        message: 'ออก Token ใหม่สำเร็จ',
-        data: result,
+        message: 'ต่ออายุเซสชันสำเร็จ',
+        data: {
+          user: result.user,
+          accessToken: result.accessToken,
+        },
       });
     } catch (error) {
-      return res.status(401).json({
+      // หากเกิดข้อผิดพลาดในการ Refresh ให้ล้าง Cookie เพื่อความปลอดภัย
+      res.clearCookie(REFRESH_COOKIE_NAME, { ...getCookieOptions(), maxAge: undefined });
+      return res.status(error.statusCode || 401).json({
         success: false,
         message: error.message,
       });
@@ -69,15 +85,29 @@ class AuthController {
   }
 
   async logout(req, res) {
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
-    return res.status(200).json({
-      success: true,
-      message: 'ออกจากระบบสำเร็จ',
-    });
+    try {
+      const refreshToken =
+        req.cookies?.[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
+
+      await authService.logout({
+        userId: req.user?.id,
+        refreshToken,
+      });
+
+      // ล้าง Cookie ออกจากเบราว์เซอร์
+      res.clearCookie(REFRESH_COOKIE_NAME, { ...getCookieOptions(), maxAge: undefined });
+
+      return res.status(200).json({
+        success: true,
+        message: 'ออกจากระบบสำเร็จ',
+      });
+    } catch (error) {
+      res.clearCookie(REFRESH_COOKIE_NAME, { ...getCookieOptions(), maxAge: undefined });
+      return res.status(200).json({
+        success: true,
+        message: 'ออกจากระบบสำเร็จ',
+      });
+    }
   }
 
   async me(req, res) {
@@ -88,7 +118,7 @@ class AuthController {
         data: user,
       });
     } catch (error) {
-      return res.status(400).json({
+      return res.status(error.statusCode || 400).json({
         success: false,
         message: error.message,
       });
