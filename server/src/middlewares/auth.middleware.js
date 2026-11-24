@@ -15,7 +15,7 @@ export const signAccessToken = (user) => {
       username: user.username,
       role: user.role,
       typ: 'access',
-      jti: crypto.randomUUID(), // มาตรฐาน RFC 7519 jti เพื่อให้ Token มีความไม่ซ้ำกันเสมอ
+      jti: crypto.randomUUID(),
     },
     ACCESS_SECRET,
     { expiresIn: ACCESS_TOKEN_TTL }
@@ -27,7 +27,7 @@ export const signRefreshToken = (user) => {
     {
       id: user.id,
       typ: 'refresh',
-      jti: crypto.randomUUID(), // ป้องกัน Token ซ้ำในวินาทีเดียวกัน และรองรับ Token Rotation ที่สมบูรณ์
+      jti: crypto.randomUUID(),
     },
     REFRESH_SECRET,
     { expiresIn: REFRESH_TOKEN_TTL }
@@ -76,6 +76,8 @@ export const authenticate = async (req, res, next) => {
         username: true,
         email: true,
         role: true,
+        points: true,
+        isBanned: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -86,6 +88,14 @@ export const authenticate = async (req, res, next) => {
         success: false,
         code: 'USER_NOT_FOUND',
         message: 'ไม่พบบัญชีผู้ใช้งานในระบบ',
+      });
+    }
+
+    if (user.isBanned) {
+      return res.status(403).json({
+        success: false,
+        code: 'ACCOUNT_BANNED',
+        message: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
       });
     }
 
@@ -101,4 +111,37 @@ export const authenticate = async (req, res, next) => {
         : 'Token ไม่ถูกต้องหรือไม่สามารถยืนยันตัวตนได้',
     });
   }
+};
+
+/**
+ * Optional Authentication: ถ้ามี Token ที่ถูกต้องจะแนบ user ให้ใน req.user
+ * ถ้าไม่มีหรือไม่ถูกต้อง จะข้ามไปทำงานต่อโดยไม่บล็อกคำขอ (สำหรับ Public Endpoints)
+ */
+export const optionalAuthenticate = async (req, res, next) => {
+  const token = extractToken(req);
+  if (!token) return next();
+
+  try {
+    const payload = jwt.verify(token, ACCESS_SECRET);
+    if (payload.typ === 'access' && payload.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: payload.id },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          points: true,
+          isBanned: true,
+          createdAt: true,
+        },
+      });
+      if (user && !user.isBanned) {
+        req.user = user;
+      }
+    }
+  } catch {
+    // ปล่อยผ่านเป็น guest
+  }
+  next();
 };

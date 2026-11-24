@@ -124,6 +124,37 @@ class AuthController {
       });
     }
   }
+
+  async updateProfile(req, res) {
+    try {
+      const updated = await authService.updateProfile(req.user.id, req.body);
+      return res.status(200).json({
+        success: true,
+        message: 'อัปเดตโปรไฟล์เรียบร้อยแล้ว',
+        data: updated,
+      });
+    } catch (error) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async changePassword(req, res) {
+    try {
+      const result = await authService.changePassword(req.user.id, req.body);
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
 }
 
 export default new AuthController();

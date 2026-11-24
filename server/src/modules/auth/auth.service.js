@@ -109,12 +109,24 @@ class AuthService {
       throw err;
     }
 
+    if (user.isBanned) {
+      const err = new Error('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');
+      err.statusCode = 403;
+      throw err;
+    }
+
     const isMatch = await bcrypt.compare(String(password), user.password);
     if (!isMatch) {
       const err = new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       err.statusCode = 401;
       throw err;
     }
+
+    // บันทึกเวลาเข้าใช้งานล่าสุด
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
 
     // ออก Access Token และ Refresh Token
     const accessToken = signAccessToken(user);
@@ -176,12 +188,16 @@ class AuthService {
       throw err;
     }
 
+    if (user.isBanned) {
+      const err = new Error('บัญชีนี้ถูกระงับการใช้งาน');
+      err.statusCode = 403;
+      throw err;
+    }
+
     const incomingHash = hashToken(refreshToken);
 
     // ตรวจสอบ Reuse Detection / Revocation
     if (!user.refreshtoken || user.refreshtoken !== incomingHash) {
-      // ตรวจพบว่า Token ถูก Revoke หรือมีการพยายาม Reuse Token เก่า
-      // ดำเนินการ Revoke Token ใน DB ทันที เพื่อความปลอดภัย
       await prisma.user.update({
         where: { id: user.id },
         data: { refreshtoken: null },
@@ -219,15 +235,17 @@ class AuthService {
         const payload = jwt.verify(refreshToken, REFRESH_SECRET);
         targetUserId = payload.id;
       } catch {
-        // ถ้า token ถอดไม่ได้ ไม่เป็นไร
+        // ignore
       }
     }
 
     if (targetUserId) {
-      await prisma.user.update({
-        where: { id: targetUserId },
-        data: { refreshtoken: null },
-      }).catch(() => {});
+      await prisma.user
+        .update({
+          where: { id: targetUserId },
+          data: { refreshtoken: null },
+        })
+        .catch(() => {});
     }
 
     return true;
@@ -243,6 +261,54 @@ class AuthService {
       throw err;
     }
     return safeUser(user);
+  }
+
+  async updateProfile(userId, { bio }) {
+    const cleanBio = bio !== undefined ? (bio ? String(bio).slice(0, 280) : null) : undefined;
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(cleanBio !== undefined ? { bio: cleanBio } : {}),
+      },
+    });
+    return safeUser(user);
+  }
+
+  async changePassword(userId, { currentPassword, newPassword }) {
+    if (!newPassword || !PASSWORD_REGEX.test(String(newPassword))) {
+      const err = new Error(
+        'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 8 ตัวอักษร และต้องประกอบด้วยทั้งตัวอักษรและตัวเลข'
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      const err = new Error('ไม่พบข้อมูลผู้ใช้');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const isMatch = await bcrypt.compare(String(currentPassword || ''), user.password);
+    if (!isMatch) {
+      const err = new Error('รหัสผ่านปัจจุบันไม่ถูกต้อง');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const hashedPassword = await bcrypt.hash(String(newPassword), 12);
+
+    // ยกระดับความปลอดภัย: เมื่อเปลี่ยนรหัสผ่าน ให้ยกเลิก session เก่าทั้งหมดในระบบทันที
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        refreshtoken: null,
+      },
+    });
+
+    return { message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' };
   }
 }
 
